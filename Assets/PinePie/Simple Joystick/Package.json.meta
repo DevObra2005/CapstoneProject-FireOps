@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 83eeb662f0a3b4a4e936573e5cc30040
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 325958
+  packageName: PinePie Joystick
+  packageVersion: 1.0.0
+  assetPath: Assets/PinePie/Simple Joystick/Package.json
+  uploadId: 772845

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 61cf970fe6d45454aaeb0e217307c12f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 325958
+  packageName: PinePie Joystick
+  packageVersion: 1.0.0
+  assetPath: Assets/PinePie/Simple Joystick/Examples/Prefabs/Static 8 Directional.prefab
+  uploadId: 772845

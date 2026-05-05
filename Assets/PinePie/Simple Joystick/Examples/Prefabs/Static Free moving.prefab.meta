@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 41fc2224df5c7f643b3b6849b10ca38d
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 325958
+  packageName: PinePie Joystick
+  packageVersion: 1.0.0
+  assetPath: Assets/PinePie/Simple Joystick/Examples/Prefabs/Static Free moving.prefab
+  uploadId: 772845

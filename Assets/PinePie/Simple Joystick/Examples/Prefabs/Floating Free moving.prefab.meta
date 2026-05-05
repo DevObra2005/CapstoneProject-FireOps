@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 30c480d3cda505e4f8b4e52d7cf25f05
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 325958
+  packageName: PinePie Joystick
+  packageVersion: 1.0.0
+  assetPath: Assets/PinePie/Simple Joystick/Examples/Prefabs/Floating Free moving.prefab
+  uploadId: 772845

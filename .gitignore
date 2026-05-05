@@ -1,0 +1,25 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# VS/Editor files
+.vs/
+.vscode/
+*.csproj
+*.sln
+*.unityproj
+*.tmp
+*.user
+*.userprefs
+
+# Large asset packages
+*.unitypackage
+
+# OS files
+.DS_Store
+Thumbs.db
