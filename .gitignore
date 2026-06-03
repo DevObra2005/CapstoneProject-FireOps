@@ -19,6 +19,7 @@
 
 # Large asset packages
 *.unitypackage
+*.apk
 
 # OS files
 .DS_Store
