@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
-using MobileJoystick = PinePie.SimpleJoystick.Joystick; // alias to avoid ambiguity
+using UnityEngine.InputSystem.EnhancedTouch;
+using MobileJoystick = PinePie.SimpleJoystick.Joystick;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 [RequireComponent(typeof(CharacterController))]
 public class FPSMobileController : MonoBehaviour
@@ -11,28 +13,46 @@ public class FPSMobileController : MonoBehaviour
 
     [Header("Look Settings")]
     public Camera playerCamera;
-    public float lookSensitivityX = 2.5f; // normal horizontal swipe
-    public float lookSensitivityY = 2.5f; // normal vertical swipe
-    public float smoothTime = 0.05f;
+    public float lookSensitivityX = 3f;
+    public float lookSensitivityY = 3f;
+
+    [Tooltip("Higher = smoother but slower. Try 0.05 to 0.15")]
+    public float smoothTime = 0.08f;
+
+    [Tooltip("Ignore tiny movements to reduce finger jitter")]
+    public float deadZone = 0.5f;
+
+    [Tooltip("Max delta per frame to prevent camera jumps")]
+    public float maxDelta = 25f;
 
     [Header("Joystick Settings")]
-    public MobileJoystick moveJoystick; // fixed ambiguity
+    public MobileJoystick moveJoystick;
 
     private CharacterController controller;
     private Vector3 moveDirection;
     private float verticalVelocity = 0f;
-
     private float rotationX = 0f;
     private Vector2 currentLookDelta;
     private Vector2 lookVelocity;
+    private bool wasPopupOpen = false;
+    private float lookCooldown = 0f;
+    private const float LOOK_COOLDOWN_AFTER_POPUP = 0.4f;
+
+    void OnEnable()
+    {
+        EnhancedTouchSupport.Enable(); // ✅ Required for real device
+    }
+
+    void OnDisable()
+    {
+        EnhancedTouchSupport.Disable();
+    }
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
-
         if (playerCamera == null)
             Debug.LogError("[FPSMobileController] PlayerCamera is not assigned!");
-
         if (moveJoystick == null)
             Debug.LogError("[FPSMobileController] MoveJoystick is not assigned!");
     }
@@ -40,6 +60,31 @@ public class FPSMobileController : MonoBehaviour
     void Update()
     {
         if (playerCamera == null || moveJoystick == null) return;
+
+        bool isPopupOpen = HazardPopupManager.Instance != null
+                           && HazardPopupManager.Instance.IsOpen;
+
+        if (isPopupOpen)
+        {
+            currentLookDelta = Vector2.zero;
+            wasPopupOpen = true;
+            HandleMovement();
+            return;
+        }
+
+        if (wasPopupOpen)
+        {
+            wasPopupOpen = false;
+            lookCooldown = LOOK_COOLDOWN_AFTER_POPUP;
+        }
+
+        if (lookCooldown > 0f)
+        {
+            lookCooldown -= Time.deltaTime;
+            currentLookDelta = Vector2.zero;
+            HandleMovement();
+            return;
+        }
 
         HandleMovement();
         HandleLook();
@@ -49,17 +94,14 @@ public class FPSMobileController : MonoBehaviour
     {
         Vector3 forward = transform.forward;
         Vector3 right = transform.right;
-
         float moveX = moveJoystick.InputDirection.x;
         float moveZ = moveJoystick.InputDirection.y;
-
         moveDirection = forward * moveZ + right * moveX;
 
-        // Gravity
         if (controller.isGrounded)
         {
             if (verticalVelocity < 0)
-                verticalVelocity = -0.5f; // small stick to ground
+                verticalVelocity = -0.5f;
         }
         else
         {
@@ -67,48 +109,50 @@ public class FPSMobileController : MonoBehaviour
         }
 
         moveDirection.y = verticalVelocity;
-
         controller.Move(moveDirection * walkSpeed * Time.deltaTime);
     }
 
     void HandleLook()
     {
-        Vector2 targetDelta = Vector2.zero;
+        Vector2 rawInput = Vector2.zero;
 
-        if (Touchscreen.current != null)
+        // ✅ EnhancedTouch — reliable on real devices
+        foreach (var touch in Touch.activeTouches)
         {
-            var touch = Touchscreen.current.primaryTouch;
+            Vector2 touchPos = touch.screenPosition;
 
-            if (touch.press.isPressed)
+            // Right side of screen only
+            if (touchPos.x > Screen.width * 0.4f)
             {
-                Vector2 touchPos = touch.position.ReadValue();
+                Vector2 delta = touch.delta;
 
-                // Only allow looking on the RIGHT side of the screen
-                if (touchPos.x > Screen.width * 0.4f)
-                {
-                    Vector2 rawDelta = touch.delta.ReadValue();
+                delta.x = Mathf.Clamp(delta.x, -maxDelta, maxDelta);
+                delta.y = Mathf.Clamp(delta.y, -maxDelta, maxDelta);
 
-                    // Normalize delta by screen size for consistent feel
-                    targetDelta = new Vector2(
-                        rawDelta.x / Screen.width * 100f,
-                        rawDelta.y / Screen.height * 100f
-                    );
-                }
+                if (delta.magnitude < deadZone)
+                    delta = Vector2.zero;
+
+                rawInput = delta * 0.1f;
+                break;
             }
         }
 
-        // Smooth the look movement
-        currentLookDelta = Vector2.SmoothDamp(
-            currentLookDelta,
-            targetDelta,
-            ref lookVelocity,
-            smoothTime
-        );
+        // Mouse fallback for Unity Editor
+#if UNITY_EDITOR
+        if (Mouse.current != null && Mouse.current.rightButton.isPressed)
+        {
+            Vector2 mouseDelta = Mouse.current.delta.ReadValue();
+            mouseDelta.x = Mathf.Clamp(mouseDelta.x, -maxDelta, maxDelta);
+            mouseDelta.y = Mathf.Clamp(mouseDelta.y, -maxDelta, maxDelta);
+            rawInput = mouseDelta * 0.05f;
+        }
+#endif
 
-        // Apply rotation
+        currentLookDelta = Vector2.SmoothDamp(
+            currentLookDelta, rawInput, ref lookVelocity, smoothTime);
+
         rotationX -= currentLookDelta.y * lookSensitivityY;
         rotationX = Mathf.Clamp(rotationX, -90f, 90f);
-
         playerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0f, 0f);
         transform.Rotate(Vector3.up * currentLookDelta.x * lookSensitivityX);
     }

@@ -13,7 +13,11 @@ MonoBehaviour:
   m_Name: FireExtinguisher
   m_EditorClassIdentifier: Assembly-CSharp::HazardData
   hazardTitle: Fire Extinguisher
-  hazardDescription: A fire extinguisher must be visible and accessible at all times.
-    Blocking or misplacing it delays emergency response.
-  safetyAction: Keep the area around the fire extinguisher clear. Check monthly that
-    the pin and pressure gauge are intact
+  hazardDescription: 'A fire extinguisher is a critical safety device used
+
+    to
+    put out small fires before they spread.'
+  safetyAction: 'Learn the TPASS method: Twist the pin, Pull the pin, Aim at the
+    base,
+
+    Squeeze the handle, and Sweep side to side.'

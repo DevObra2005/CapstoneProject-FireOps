@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -69,13 +69,29 @@ public class HazardPopupManager : MonoBehaviour
     public void ClosePopup()
     {
         popupPanel.SetActive(false);
-
-        IsOpen = true;
+        IsOpen = false;  // ✅ FIXED: was incorrectly set to true before
         closeCooldown = COOLDOWN_TIME;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        // ✅ NEW: Check if this was the last hazard
+        // If all hazards found → show completion modal
+        // instead of re-enabling player movement
+        if (HazardCounterManager.Instance != null &&
+            HazardCounterManager.Instance.AllHazardsFound)
+        {
+            Debug.Log("[HazardPopupManager] All hazards found! Showing completion modal.");
+
+            if (CompletionManager.Instance != null)
+                CompletionManager.Instance.ShowCompletionModal();
+
+            // Don't re-enable controller — player shouldn't
+            // move while completion modal is showing
+            return;
+        }
+
+        // Normal close — re-enable player movement
         if (firstPersonController != null)
             firstPersonController.enabled = true;
     }
