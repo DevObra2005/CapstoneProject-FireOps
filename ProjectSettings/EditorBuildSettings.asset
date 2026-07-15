@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/Scenes/LoginScene.unity
     guid: 7422dbe8d922a0c4685d2a01a809b82f
   - enabled: 1
+    path: Assets/Scenes/EventSelectionScene.unity
+    guid: 1a2f5d62365aee64586d1793e4279785
+  - enabled: 1
     path: Assets/Scenes/MainMenuScene.unity
     guid: f285791b08b96704f8f4bf1be0d4f445
   - enabled: 1
@@ -20,6 +23,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Office3DScene.unity
     guid: 8359f51b2a5d8a14e8eb43a28cbd92f4
+  - enabled: 1
+    path: Assets/Scenes/Kitchen3DScene.unity
+    guid: 8aa500721973b81408fccc258ae4f5ff
+  - enabled: 1
+    path: Assets/Scenes/Classroom3DScene.unity
+    guid: a4874e22328a24644b7021bc82e4a4c5
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

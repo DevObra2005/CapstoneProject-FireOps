@@ -9,13 +9,22 @@ public class Door : MonoBehaviour, IInteractable
     public bool hingeLeft = true;      // hinge side
     public float autoCloseDelay = 2f;  // seconds before auto-close
 
+    [Header("Phase 2 — Evacuate")]
+    [Tooltip("Label sent to Laravel for this exit, e.g. 'ExitDoor'.")]
+    [SerializeField] private string actionName = "ExitDoor";
+
+    [Tooltip("Penalty applied if the player tries to exit before finishing the fire safety steps.")]
+    [SerializeField] private float wrongExitPenalty = 20f;
+
+    [TextArea]
+    [SerializeField] private string wrongExitTip = "You must finish putting out the fire before evacuating!";
+
     private bool isOpen = false;
     private float currentAngle = 0f;
     private Vector3 hingePosition;
     private Quaternion startRotation;
     private Vector3 doorOriginalPosition;
     private Vector3 hingeAxis = Vector3.up;
-
     private Collider doorCollider;
     private float closeTimer = 0f;
 
@@ -33,7 +42,7 @@ public class Door : MonoBehaviour, IInteractable
         if (doorCollider != null)
             doorCollider.isTrigger = true; // make it a trigger so player can pass
 
-        // optionally, add Rigidbody kinematic so physics doesn’t push the player
+        // optionally, add Rigidbody kinematic so physics doesn't push the player
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb == null)
         {
@@ -47,7 +56,6 @@ public class Door : MonoBehaviour, IInteractable
         // smooth rotation
         float targetAngle = isOpen ? openAngle : 0f;
         currentAngle = Mathf.Lerp(currentAngle, targetAngle, Time.deltaTime * speed);
-
         transform.position = doorOriginalPosition;
         transform.rotation = startRotation;
         transform.RotateAround(hingePosition, hingeAxis, currentAngle * (hingeLeft ? 1f : -1f));
@@ -63,10 +71,70 @@ public class Door : MonoBehaviour, IInteractable
 
     public void Interact()
     {
+        // Phase 2 has its own special handling — evacuating is only
+        // valid once TPASS is actually finished. Phase 1 (or no
+        // simulation active) falls through to the normal toggle below.
+        if (PlayerPrefs.GetInt("SimulationMode", 0) == 1)
+        {
+            HandlePhase2Tap();
+            return;
+        }
+
         if (!isOpen)
             OpenDoor();
         else
             CloseDoor();
+    }
+
+    // -------------------------------------------------------
+    // NEW: handles a door tap during Phase 2 specifically.
+    //
+    // If the player has actually finished TPASS (currentStep >= 8,
+    // meaning Sweep already completed), this IS the correct
+    // Evacuate action — door opens, Step 8 logs correct, simulation
+    // ends as a WIN.
+    //
+    // If they tap the door too early (still mid-TPASS or earlier),
+    // this is treated as a WRONG action — same as tapping any other
+    // wrong object: a time penalty and an educational tip, door
+    // stays shut, simulation keeps running.
+    // -------------------------------------------------------
+    private void HandlePhase2Tap()
+    {
+        if (SimulationManager.Instance == null) return;
+
+        int currentStep = SimulationManager.Instance.CurrentStep;
+
+        if (currentStep >= 8)
+        {
+            // Correct: TPASS is done, this really is the exit.
+            OpenDoor();
+
+            Debug.Log("[Door] Door opened during Phase 2 — evacuating!");
+
+            SimulationManager.Instance.RegisterCorrectAction(
+                SimulationInteractable.SimStep.Evacuate,
+                actionName
+            );
+
+            SimulationManager.Instance.EndSimulation(won: true);
+        }
+        else
+        {
+            // Wrong: tried to leave before finishing the steps.
+            Debug.Log($"[Door] WRONG — tried to evacuate early at step {currentStep}. Penalty -{wrongExitPenalty}s");
+
+            // currentStep (int) lines up 1-to-1 with SimStep's numeric
+            // values, so casting tells us which step they SHOULD be on.
+            SimulationInteractable.SimStep expectedStep = (SimulationInteractable.SimStep)currentStep;
+
+            SimulationManager.Instance.RegisterWrongAction(
+                expectedStep,
+                actionName,
+                wrongExitPenalty,
+                wrongExitTip
+            );
+        }
     }
 
     private void OpenDoor()

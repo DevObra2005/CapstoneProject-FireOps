@@ -29,7 +29,6 @@ public class CompletionManager : MonoBehaviour
     // Called by HazardCounterManager when all hazards are found
     public void ShowCompletionModal()
     {
-        // ✅ Close hazard popup first if it's open
         if (HazardPopupManager.Instance != null && HazardPopupManager.Instance.IsOpen)
         {
             HazardPopupManager.Instance.popupPanel.SetActive(false);
@@ -45,17 +44,16 @@ public class CompletionManager : MonoBehaviour
     // Called by the START button's OnClick event
     public void LoadNextScene()
     {
-        // ✅ Mark learning as completed (used by ScenarioSelection)
         PlayerPrefs.SetInt("FireLearningCompleted", 1);
-
-        // ✅ Set simulation mode flag
         PlayerPrefs.SetInt("SimulationMode", 1);
-
         PlayerPrefs.Save();
 
-        Debug.Log("[CompletionManager] Starting simulation mode...");
+        // Tell GameModeManager this is a legitimate Phase 2 transition.
+        // Without this, GameModeManager.Awake() would reset SimulationMode
+        // back to 0 on the next scene load, cancelling our flag above.
+        GameModeManager.intentionalTransition = true;
 
-        // ✅ Reload the SAME scene in simulation mode
+        Debug.Log("[CompletionManager] Starting simulation mode...");
         SceneManager.LoadScene("Office3DScene");
     }
 }

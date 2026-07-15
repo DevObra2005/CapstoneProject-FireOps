@@ -1,11 +1,16 @@
-# Unity generated
+# Unity generated folders
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
 [Bb]uild/
 [Bb]uilds/
 [Ll]ogs/
-[Uu]ser[Ss]ettings/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+
+# Build output folders (yours specifically)
+BuildCapstoneProject_BackUpThisFolder_ButDontShipItWithYourGame/
+Capstone Project_BurstDebugInformation_DoNotShip/
 
 # VS/Editor files
 .vs/
@@ -20,6 +25,7 @@
 # Large asset packages
 *.unitypackage
 *.apk
+*.aab
 
 # OS files
 .DS_Store
