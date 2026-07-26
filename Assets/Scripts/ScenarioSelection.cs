@@ -5,31 +5,42 @@ public class ScenarioSelection : MonoBehaviour
 {
     public GameObject fireLearningPopup; // Assign your popup panel in Inspector
 
-    // 1️⃣ Call this when the user clicks the scenario button
+    // Shared helper — uses the persistent loading screen when available.
+    private void Go(string sceneName, string tagline)
+    {
+        if (LoadingScreen.Instance != null)
+            LoadingScreen.Instance.Show(sceneName, tagline);
+        else
+            SceneManager.LoadScene(sceneName);
+    }
+
+    // Called when the user clicks the scenario button
     public void OnScenario1Selected()
     {
-        // 2️⃣ Check if the user completed the learning module
         int completed = PlayerPrefs.GetInt("FireLearningCompleted", 0);
 
         if (completed == 0)
         {
-            // 3️⃣ Learning module not finished → show popup
+            // Learning module not finished → show popup
             fireLearningPopup.SetActive(true);
         }
         else
         {
-            // 4️⃣ Learning module finished → go directly to 3D scene
-            SceneManager.LoadScene("Office3DScene");
+            // Learning module finished → go straight in
+            Go("Office3DScene", "LOADING OFFICE");
         }
     }
 
-    // 5️⃣ Called by the "Start Learning" button on the popup
+    // Called by the "Start Learning" button on the popup
     public void StartLearningModule()
     {
-        SceneManager.LoadScene("Office3DScene"); // Same 3D Office scene
+        if (fireLearningPopup != null)
+            fireLearningPopup.SetActive(false);
+
+        Go("Office3DScene", "LOADING OFFICE");
     }
 
-    // 6️⃣ Called by the "Cancel" button on the popup
+    // Called by the "Cancel" button on the popup
     public void CancelPopup()
     {
         fireLearningPopup.SetActive(false);

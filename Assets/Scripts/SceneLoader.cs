@@ -1,37 +1,53 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+
 public class SceneLoader : MonoBehaviour
 {
-    // Call this function from your button
+    // Shared helper — uses the persistent loading screen when available.
+    private void Go(string sceneName, string tagline)
+    {
+        if (LoadingScreen.Instance != null)
+            LoadingScreen.Instance.Show(sceneName, tagline);
+        else
+            SceneManager.LoadScene(sceneName);
+    }
+
+    // --- Menu navigation: instant, no loading screen needed ---
+
     public void LoadMainMenu()
     {
-        SceneManager.LoadScene("MainMenuScene"); // Replace with your MainMenu scene name
+        SceneManager.LoadScene("MainMenuScene");
     }
+
     public void GoBackExit()
     {
         SceneManager.LoadScene("LoginScene");
     }
+
     public void ScenarioSelection()
     {
         SceneManager.LoadScene("ScenarioSelectionScene");
     }
+
     public void GoBack()
     {
         SceneManager.LoadScene("MainMenuScene");
     }
-    // --- Add this for your office scenario ---
+
+    // --- Environment scenes: heavy, so show the loading screen ---
+
     public void LoadOfficeScene()
     {
-        SceneManager.LoadScene("Office3DScene"); // Replace with your office scene name
+        Go("Office3DScene", "LOADING OFFICE");
     }
-    // --- Add this for your classroom scenario ---
+
     public void LoadClassroomScene()
     {
-        SceneManager.LoadScene("Classroom3DScene");
+        Go("Classroom3DScene", "LOADING CLASSROOM");
     }
-    // --- Add this for your kitchen scenario ---
+
     public void LoadKitchenScene()
     {
-        SceneManager.LoadScene("Kitchen3DScene");
+        Go("Kitchen3DScene", "LOADING KITCHEN");
     }
 }

@@ -34,13 +34,13 @@ public class FPSMobileController : MonoBehaviour
     private float rotationX = 0f;
     private Vector2 currentLookDelta;
     private Vector2 lookVelocity;
-    private bool wasPopupOpen = false;
+    private bool wasDialogueOpen = false;
     private float lookCooldown = 0f;
     private const float LOOK_COOLDOWN_AFTER_POPUP = 0.4f;
 
     void OnEnable()
     {
-        EnhancedTouchSupport.Enable(); // ✅ Required for real device
+        EnhancedTouchSupport.Enable(); // Required for real device
     }
 
     void OnDisable()
@@ -61,20 +61,21 @@ public class FPSMobileController : MonoBehaviour
     {
         if (playerCamera == null || moveJoystick == null) return;
 
-        bool isPopupOpen = HazardPopupManager.Instance != null
-                           && HazardPopupManager.Instance.IsOpen;
+        // Freeze camera look while the BFP dialogue is open
+        bool isDialogueOpen = DialogueManager.Instance != null
+                              && DialogueManager.Instance.IsDialogueActive();
 
-        if (isPopupOpen)
+        if (isDialogueOpen)
         {
             currentLookDelta = Vector2.zero;
-            wasPopupOpen = true;
+            wasDialogueOpen = true;
             HandleMovement();
             return;
         }
 
-        if (wasPopupOpen)
+        if (wasDialogueOpen)
         {
-            wasPopupOpen = false;
+            wasDialogueOpen = false;
             lookCooldown = LOOK_COOLDOWN_AFTER_POPUP;
         }
 
@@ -116,7 +117,7 @@ public class FPSMobileController : MonoBehaviour
     {
         Vector2 rawInput = Vector2.zero;
 
-        // ✅ EnhancedTouch — reliable on real devices
+        // EnhancedTouch — reliable on real devices
         foreach (var touch in Touch.activeTouches)
         {
             Vector2 touchPos = touch.screenPosition;

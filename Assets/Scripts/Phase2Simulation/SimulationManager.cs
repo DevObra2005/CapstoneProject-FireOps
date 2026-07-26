@@ -12,10 +12,22 @@ public class SimulationManager : MonoBehaviour
     // step results, and triggers Win or Lose when the simulation
     // ends.
     //
-    // NEW THIS UPDATE: every correct/wrong action is now also
-    // recorded as a StepResult (step name, what was tapped, was
-    // it correct, penalty). On a WIN, that full list is handed to
-    // ResultsSubmitter, which POSTs it to Laravel.
+    // The timer does not start the moment the scene loads.
+    // Phase2Briefing plays the BFP officer's intro first, then
+    // calls BeginSimulation() when the player taps "START".
+    // Until then simActive stays false, so the clock is frozen
+    // and no penalties can be taken.
+    //
+    // NEW THIS UPDATE: TotalPenaltySeconds is now exposed as a
+    // public property. ResultsUIManager reads it to show the
+    // penalties chip on the win panel — the Laravel response
+    // doesn't carry that number back, but we already have it
+    // locally from tracking it during the run.
+    //
+    // Every correct/wrong action is also recorded as a StepResult
+    // (step name, what was tapped, was it correct, penalty). On a
+    // WIN, that full list is handed to ResultsSubmitter, which
+    // POSTs it to Laravel.
     //
     // Step breakdown (Office/Classroom — TPASS):
     // 1 = Sound Alarm
@@ -25,7 +37,7 @@ public class SimulationManager : MonoBehaviour
     // 5 = TPASS Aim
     // 6 = TPASS Squeeze
     // 7 = TPASS Sweep
-    // 8 = Evacuate (completed by ExitTrigger, not RegisterCorrectAction)
+    // 8 = Evacuate (completed by Door, not RegisterCorrectAction)
     // -------------------------------------------------------
 
     // --- SINGLETON ---
@@ -47,11 +59,11 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private bool simActive = false;
     private List<string> missedTips = new List<string>();
 
-    // NEW: the structured list Laravel expects. One entry per
+    // The structured list Laravel expects. One entry per
     // correct or wrong action taken during the simulation.
     private List<StepResult> stepResults = new List<StepResult>();
 
-    // NEW: running total of penalty seconds — matches total_penalties
+    // Running total of penalty seconds — matches total_penalties
     // in the payload exactly, since it's built from the same events.
     private int totalPenaltySeconds = 0;
 
@@ -59,6 +71,10 @@ public class SimulationManager : MonoBehaviour
     public float TimeRemaining => timeRemaining;
     public int CurrentStep => currentStep;
     public List<string> MissedTips => missedTips;
+    public bool IsSimActive => simActive;
+
+    // NEW: read by ResultsUIManager for the win panel's penalty chip.
+    public int TotalPenaltySeconds => totalPenaltySeconds;
 
     private void Awake()
     {
@@ -73,7 +89,31 @@ public class SimulationManager : MonoBehaviour
     private void Start()
     {
         timeRemaining = totalTime;
-        simActive = PlayerPrefs.GetInt("SimulationMode", 0) == 1;
+
+        // The clock does NOT start here. Phase2Briefing calls
+        // BeginSimulation() once the intro dialogue is done.
+        simActive = false;
+    }
+
+    // -------------------------------------------------------
+    // BEGIN SIMULATION
+    // Called by Phase2Briefing when the player dismisses the
+    // officer's intro. This is the moment the 90 seconds start.
+    // -------------------------------------------------------
+    public void BeginSimulation()
+    {
+        // Guard: only ever run in Phase 2.
+        if (PlayerPrefs.GetInt("SimulationMode", 0) != 1)
+        {
+            Debug.LogWarning("[SimulationManager] BeginSimulation called outside Phase 2 — ignored.");
+            return;
+        }
+
+        // Guard: don't restart a sim that's already running or finished.
+        if (simActive) return;
+
+        simActive = true;
+        Debug.Log("[SimulationManager] Simulation started. Timer running.");
     }
 
     private void Update()
