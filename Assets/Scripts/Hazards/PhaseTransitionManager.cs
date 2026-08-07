@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.SceneManagement;
 
 public class PhaseTransitionManager : MonoBehaviour
@@ -6,43 +7,64 @@ public class PhaseTransitionManager : MonoBehaviour
     // -------------------------------------------------------
     // WHAT THIS DOES:
     // Watches for all hazards being complete, then runs:
-    //   1. Prompt dialogue  ("well done, now find the alarm")
-    //   2. Highlights the fire alarm pull station
-    //   3. Player taps it → alarm teaching dialogue
-    //   4. Highlights the fire extinguisher
-    //   5. Player taps it → teaching dialogue (types + TPASS intro)
+    //   1. Prompt dialogue  ("well done — now let's learn the response")
+    //   2. Highlights Teaching Target 1 (Office: fire alarm | Kitchen: wet blanket)
+    //   3. Player taps it → target 1 teaching dialogue
+    //   4. Highlights Teaching Target 2 (Office: extinguisher | Kitchen: LPG valve)
+    //   5. Player taps it → target 2 teaching dialogue
     //   6. Confirm screen → loading screen → Phase 2
-    // Replaces the old CompletionManager.
+    //
+    // The two teaching targets are GENERIC. Assign whatever objects the
+    // environment needs and write matching dialogue — the script just
+    // highlights each target and plays its lines, in order.
+    //
+    // NOTE: [FormerlySerializedAs] preserves the OLD field assignments
+    // (alarmPanel, alarmLines, fireExtinguisher, extinguisherLines) so the
+    // existing Office scene keeps its references after this rename — no
+    // re-wiring needed.
+    //
+    // The tap callbacks are named OnTarget1Tapped / OnTarget2Tapped.
+    // AlarmTarget.cs and ExtinguisherTarget.cs call these — keep all three
+    // files in sync if you rename again.
     // -------------------------------------------------------
 
     [Header("Prompt — plays when all hazards are done")]
     public DialogueLine[] promptLines;
 
-    [Header("Fire Alarm")]
-    public GameObject alarmPanel;
+    [Header("Teaching Target 1")]
+    [Tooltip("Office: fire alarm | Kitchen: wet blanket")]
+    [FormerlySerializedAs("alarmPanel")]
+    public GameObject teachTarget1;
 
-    [Header("Teaching — plays when alarm is tapped")]
-    public DialogueLine[] alarmLines;
+    [Header("Target 1 Teaching Lines")]
+    [Tooltip("Plays when Teaching Target 1 is tapped")]
+    [FormerlySerializedAs("alarmLines")]
+    public DialogueLine[] teach1Lines;
 
-    [Header("Extinguisher")]
-    public GameObject fireExtinguisher;
+    [Header("Teaching Target 2")]
+    [Tooltip("Office: fire extinguisher | Kitchen: LPG valve")]
+    [FormerlySerializedAs("fireExtinguisher")]
+    public GameObject teachTarget2;
 
-    [Header("Teaching — plays when extinguisher is tapped")]
-    public DialogueLine[] extinguisherLines;
+    [Header("Target 2 Teaching Lines")]
+    [Tooltip("Plays when Teaching Target 2 is tapped")]
+    [FormerlySerializedAs("extinguisherLines")]
+    public DialogueLine[] teach2Lines;
 
     [Header("Confirm Screen")]
     public GameObject confirmPanel;
 
     [Header("Scene")]
-    [Tooltip("Scene to load for Phase 2 — usually the same scene reloaded")]
+    [Tooltip("Phase 2 always reloads the CURRENT scene. This field is kept " +
+             "for reference only and is no longer used to pick the scene.")]
     public string phaseTwoScene = "Office3DScene";
 
     [Tooltip("Text shown on the loading screen during the transition")]
     public string loadingTagline = "PREPARING SIMULATION";
 
     private bool hasTriggered = false;
-    private bool awaitingAlarm = false;
-    private bool awaitingExtinguisher = false;
+    private bool awaitingTarget1 = false;
+    private bool awaitingTarget2 = false;
 
     void Start()
     {
@@ -66,91 +88,93 @@ public class PhaseTransitionManager : MonoBehaviour
     {
         if (promptLines == null || promptLines.Length == 0)
         {
-            HighlightAlarm();
+            HighlightTarget1();
             return;
         }
 
         DialogueManager.Instance.StartDialogue(
             promptLines,
-            HighlightAlarm,
+            HighlightTarget1,
             true);
     }
 
     // -------------------------------------------------------
-    // STAGE 1 — FIRE ALARM
+    // STAGE 1 — TEACHING TARGET 1 (alarm / wet blanket)
     // -------------------------------------------------------
 
-    void HighlightAlarm()
+    void HighlightTarget1()
     {
-        if (alarmPanel == null)
+        if (teachTarget1 == null)
         {
-            Debug.LogWarning("[PhaseTransition] No alarm panel assigned — skipping to extinguisher.");
-            HighlightExtinguisher();
+            Debug.LogWarning("[PhaseTransition] No Teaching Target 1 assigned — skipping to Target 2.");
+            HighlightTarget2();
             return;
         }
 
-        awaitingAlarm = true;
+        awaitingTarget1 = true;
 
-        AlarmTarget target = alarmPanel.GetComponent<AlarmTarget>();
+        AlarmTarget target = teachTarget1.GetComponent<AlarmTarget>();
         if (target == null)
-            target = alarmPanel.AddComponent<AlarmTarget>();
+            target = teachTarget1.AddComponent<AlarmTarget>();
 
         target.Setup(this);
     }
 
-    public void OnAlarmTapped()
+    // Called by AlarmTarget.OnClicked()
+    public void OnTarget1Tapped()
     {
-        if (!awaitingAlarm) return;
-        awaitingAlarm = false;
+        if (!awaitingTarget1) return;
+        awaitingTarget1 = false;
 
-        if (alarmLines == null || alarmLines.Length == 0)
+        if (teach1Lines == null || teach1Lines.Length == 0)
         {
-            HighlightExtinguisher();
+            HighlightTarget2();
             return;
         }
 
         DialogueManager.Instance.StartDialogue(
-            alarmLines,
-            HighlightExtinguisher,
+            teach1Lines,
+            HighlightTarget2,
             true);
     }
 
     // -------------------------------------------------------
-    // STAGE 2 — FIRE EXTINGUISHER
+    // STAGE 2 — TEACHING TARGET 2 (extinguisher / LPG valve)
     // -------------------------------------------------------
 
-    void HighlightExtinguisher()
+    void HighlightTarget2()
     {
-        if (fireExtinguisher == null)
+        if (teachTarget2 == null)
         {
-            Debug.LogWarning("[PhaseTransition] No fire extinguisher assigned!");
+            Debug.LogWarning("[PhaseTransition] No Teaching Target 2 assigned!");
             ShowConfirmScreen();
             return;
         }
 
-        awaitingExtinguisher = true;
+        awaitingTarget2 = true;
 
         ExtinguisherTarget target =
-            fireExtinguisher.GetComponent<ExtinguisherTarget>();
+            teachTarget2.GetComponent<ExtinguisherTarget>();
         if (target == null)
-            target = fireExtinguisher.AddComponent<ExtinguisherTarget>();
+            target = teachTarget2.AddComponent<ExtinguisherTarget>();
 
         target.Setup(this);
     }
 
-    public void OnExtinguisherTapped()
+    // Called by ExtinguisherTarget.OnClicked()
+    public void OnTarget2Tapped()
     {
-        if (!awaitingExtinguisher) return;
-        awaitingExtinguisher = false;
+        if (!awaitingTarget2) return;
+        awaitingTarget2 = false;
 
-        if (extinguisherLines == null || extinguisherLines.Length == 0)
+        if (teach2Lines == null || teach2Lines.Length == 0)
         {
             ShowConfirmScreen();
             return;
         }
 
         DialogueManager.Instance.StartDialogue(
-            extinguisherLines,
+            teach2Lines,
             ShowConfirmScreen,
             true);
     }
@@ -189,11 +213,16 @@ public class PhaseTransitionManager : MonoBehaviour
         if (confirmPanel != null)
             confirmPanel.SetActive(false);
 
+        // Phase 2 is ALWAYS the same scene reloaded. Use the active scene
+        // name so this works in Office, Kitchen, and Classroom without any
+        // per-scene hardcoding. (Fixes the bug where Kitchen loaded Office.)
+        string sceneToLoad = SceneManager.GetActiveScene().name;
+
         // Use the persistent loading screen if it exists,
         // otherwise fall back to a direct scene load.
         if (LoadingScreen.Instance != null)
-            LoadingScreen.Instance.Show(phaseTwoScene, loadingTagline);
+            LoadingScreen.Instance.Show(sceneToLoad, loadingTagline);
         else
-            SceneManager.LoadScene(phaseTwoScene);
+            SceneManager.LoadScene(sceneToLoad);
     }
 }

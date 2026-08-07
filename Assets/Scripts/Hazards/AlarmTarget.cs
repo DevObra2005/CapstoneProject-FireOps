@@ -1,5 +1,8 @@
 using UnityEngine;
 
+// Highlights Teaching Target 1 during the Phase 1 -> Phase 2 bridge.
+// (Office: fire alarm | Kitchen: wet blanket)
+// Added at runtime by PhaseTransitionManager.HighlightTarget1().
 public class AlarmTarget : MonoBehaviour
 {
     private PhaseTransitionManager owner;
@@ -28,7 +31,6 @@ public class AlarmTarget : MonoBehaviour
     void Update()
     {
         if (!pulsing || rends == null) return;
-
         float t = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
         for (int i = 0; i < rends.Length; i++)
         {
@@ -40,15 +42,13 @@ public class AlarmTarget : MonoBehaviour
     public void OnClicked()
     {
         if (owner == null) return;
-
         pulsing = false;
         for (int i = 0; i < rends.Length; i++)
         {
             if (rends[i] != null)
                 rends[i].material.color = baseColors[i];
         }
-
-        owner.OnAlarmTapped();
+        owner.OnTarget1Tapped();
     }
 
     public void OnHoverEnter() { }

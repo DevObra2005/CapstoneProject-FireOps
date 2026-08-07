@@ -18,17 +18,6 @@ public class SimulationManager : MonoBehaviour
     // Until then simActive stays false, so the clock is frozen
     // and no penalties can be taken.
     //
-    // NEW THIS UPDATE: TotalPenaltySeconds is now exposed as a
-    // public property. ResultsUIManager reads it to show the
-    // penalties chip on the win panel — the Laravel response
-    // doesn't carry that number back, but we already have it
-    // locally from tracking it during the run.
-    //
-    // Every correct/wrong action is also recorded as a StepResult
-    // (step name, what was tapped, was it correct, penalty). On a
-    // WIN, that full list is handed to ResultsSubmitter, which
-    // POSTs it to Laravel.
-    //
     // Step breakdown (Office/Classroom — TPASS):
     // 1 = Sound Alarm
     // 2 = Grab Extinguisher
@@ -49,8 +38,6 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private UnityEvent onLose;
 
     [Header("Results Submission")]
-    // Drag the GameObject holding ResultsSubmitter here.
-    // On a WIN, we call Submit() on this with everything we tracked.
     [SerializeField] private ResultsSubmitter resultsSubmitter;
 
     // --- RUNTIME STATE ---
@@ -58,13 +45,7 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private int currentStep = 1;
     [SerializeField] private bool simActive = false;
     private List<string> missedTips = new List<string>();
-
-    // The structured list Laravel expects. One entry per
-    // correct or wrong action taken during the simulation.
     private List<StepResult> stepResults = new List<StepResult>();
-
-    // Running total of penalty seconds — matches total_penalties
-    // in the payload exactly, since it's built from the same events.
     private int totalPenaltySeconds = 0;
 
     // --- PUBLIC READ-ONLY PROPERTIES ---
@@ -72,8 +53,6 @@ public class SimulationManager : MonoBehaviour
     public int CurrentStep => currentStep;
     public List<string> MissedTips => missedTips;
     public bool IsSimActive => simActive;
-
-    // NEW: read by ResultsUIManager for the win panel's penalty chip.
     public int TotalPenaltySeconds => totalPenaltySeconds;
 
     private void Awake()
@@ -86,30 +65,38 @@ public class SimulationManager : MonoBehaviour
         Instance = this;
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
     private void Start()
     {
-        timeRemaining = totalTime;
+        ResetRuntimeState();
+    }
 
-        // The clock does NOT start here. Phase2Briefing calls
-        // BeginSimulation() once the intro dialogue is done.
+    private void ResetRuntimeState()
+    {
+        timeRemaining = totalTime;
+        currentStep = 1;
         simActive = false;
+        totalPenaltySeconds = 0;
+        missedTips.Clear();
+        stepResults.Clear();
     }
 
     // -------------------------------------------------------
     // BEGIN SIMULATION
-    // Called by Phase2Briefing when the player dismisses the
-    // officer's intro. This is the moment the 90 seconds start.
     // -------------------------------------------------------
     public void BeginSimulation()
     {
-        // Guard: only ever run in Phase 2.
         if (PlayerPrefs.GetInt("SimulationMode", 0) != 1)
         {
             Debug.LogWarning("[SimulationManager] BeginSimulation called outside Phase 2 — ignored.");
             return;
         }
 
-        // Guard: don't restart a sim that's already running or finished.
         if (simActive) return;
 
         simActive = true;
@@ -125,19 +112,12 @@ public class SimulationManager : MonoBehaviour
         if (timeRemaining <= 0f)
         {
             timeRemaining = 0f;
-            // Fail Type A: timer ran out. Per your spec, Unity
-            // NEVER posts to Laravel on this path.
             EndSimulation(won: false);
         }
     }
 
     // -------------------------------------------------------
     // REGISTER CORRECT ACTION
-    // Called by SimulationInteractable / TPASSButtonManager when
-    // the player taps the right object/button for the current step.
-    //
-    // step        = which of the 8 steps this action belongs to
-    // chosenAction = a readable label for what was tapped, e.g. "AlarmPanel"
     // -------------------------------------------------------
     public void RegisterCorrectAction(SimulationInteractable.SimStep step, string chosenAction)
     {
@@ -152,14 +132,16 @@ public class SimulationManager : MonoBehaviour
             penalty_seconds = 0
         });
 
+        // >>> FEEDBACK LOG: green row with a friendly label of the completed step.
+        if (ActionFeedbackManager.Instance != null)
+            ActionFeedbackManager.Instance.ShowCorrect(StepNames.Friendly(step.ToString()));
+
         if (currentStep < 8)
             currentStep++;
     }
 
     // -------------------------------------------------------
     // REGISTER WRONG ACTION
-    // step         = the step the player WAS ON when they got it wrong
-    // chosenAction = what they actually tapped instead, e.g. "WrongObject"
     // -------------------------------------------------------
     public void RegisterWrongAction(SimulationInteractable.SimStep step, string chosenAction, float timePenalty, string tip)
     {
@@ -180,6 +162,12 @@ public class SimulationManager : MonoBehaviour
             penalty_seconds = penaltyInt
         });
 
+        // >>> FEEDBACK LOG: red row. The hint points at the CURRENT step
+        // the player should be doing (currentStep), NOT the button they
+        // mis-tapped — so it guides them to the right next move.
+        if (ActionFeedbackManager.Instance != null)
+            ActionFeedbackManager.Instance.ShowWrong(StepNames.Hint(currentStep), penaltyInt);
+
         if (timeRemaining <= 0f)
         {
             timeRemaining = 0f;
@@ -199,16 +187,14 @@ public class SimulationManager : MonoBehaviour
         if (won)
         {
             int finalScore = Mathf.RoundToInt(timeRemaining);
-            Debug.Log($"[SimulationManager] WIN. Score: {finalScore}");
+            Debug.Log($"[SimulationManager] Completed. Submitting for validation. Local score: {finalScore}");
 
-            // Show the win screen immediately using the score we
-            // already know locally — we don't make the player wait
-            // on the network before seeing their result.
+            ResultsUIManager resultsUI = FindFirstObjectByType<ResultsUIManager>();
+            if (resultsUI != null)
+                resultsUI.ShowSubmitting();
+
             onWin.Invoke();
 
-            // Fire the submission in the background. ResultsSubmitter's
-            // own UnityEvents (onSaved/onRetry/onDuplicate/onConnectionError)
-            // handle whatever happens after Laravel responds.
             if (resultsSubmitter != null)
             {
                 resultsSubmitter.Submit(finalScore, totalPenaltySeconds, stepResults);

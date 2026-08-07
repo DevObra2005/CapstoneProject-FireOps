@@ -2,6 +2,15 @@ using UnityEngine;
 
 public class HazardActionTarget : MonoBehaviour
 {
+    // -------------------------------------------------------
+    // Global "who is armed right now" reference.
+    // While this is non-null, an action target is waiting to be
+    // tapped, and the interaction manager blocks clicks/hover on
+    // every OTHER hazard so the player must finish the current
+    // action before starting a new one.
+    // -------------------------------------------------------
+    public static HazardActionTarget ActiveTarget { get; private set; }
+
     private ClickableHazard owner;
 
     [Header("Highlight")]
@@ -25,7 +34,6 @@ public class HazardActionTarget : MonoBehaviour
     private Renderer[] rends;
     private Color[] originalEmissions;
     private bool[] hadEmission;
-
     private bool pulsing = false;
     private float armBlend = 0f;
 
@@ -41,6 +49,10 @@ public class HazardActionTarget : MonoBehaviour
 
         armBlend = 0f;
         pulsing = true;
+
+        // Register as the currently-armed target so the interaction
+        // manager locks out all other hazards until this is tapped.
+        ActiveTarget = this;
     }
 
     // Remember each material's starting emission so we can restore it perfectly.
@@ -101,14 +113,11 @@ public class HazardActionTarget : MonoBehaviour
     private void ClearGlow()
     {
         if (rends == null) return;
-
         for (int i = 0; i < rends.Length; i++)
         {
             if (rends[i] == null) continue;
-
             var mat = rends[i].material;
             if (!mat.HasProperty(EmissionColorID)) continue;
-
             mat.SetColor(EmissionColorID, originalEmissions[i]);
             if (!hadEmission[i])
                 mat.DisableKeyword("_EMISSION");
@@ -123,6 +132,10 @@ public class HazardActionTarget : MonoBehaviour
         pulsing = false;
         armBlend = 0f;
         ClearGlow();
+
+        // Clear the global lock so other hazards become interactable again.
+        if (ActiveTarget == this)
+            ActiveTarget = null;
 
         owner.CompleteHazard();
     }

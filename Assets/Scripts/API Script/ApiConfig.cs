@@ -13,7 +13,7 @@
 public static class ApiConfig
 {
     // CHANGE THIS LINE when your network changes:
-    private const string SERVER_IP = "10.163.149.165"; // <-- your PC's IP
+    private const string SERVER_IP = "192.168.1.5"; // <-- your PC's IP
     private const string PORT = "8000";
 
     public static string BaseUrl => $"http://{SERVER_IP}:{PORT}";

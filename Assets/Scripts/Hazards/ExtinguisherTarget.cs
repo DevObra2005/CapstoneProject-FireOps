@@ -1,9 +1,11 @@
 using UnityEngine;
 
+// Highlights Teaching Target 2 during the Phase 1 -> Phase 2 bridge.
+// (Office: fire extinguisher | Kitchen: LPG valve)
+// Added at runtime by PhaseTransitionManager.HighlightTarget2().
 public class ExtinguisherTarget : MonoBehaviour
 {
     private PhaseTransitionManager owner;
-
     private Renderer[] rends;
     private Color[] baseColors;
     private bool pulsing = false;
@@ -15,7 +17,6 @@ public class ExtinguisherTarget : MonoBehaviour
     public void Setup(PhaseTransitionManager manager)
     {
         owner = manager;
-
         rends = GetComponentsInChildren<Renderer>();
         baseColors = new Color[rends.Length];
         for (int i = 0; i < rends.Length; i++)
@@ -30,7 +31,6 @@ public class ExtinguisherTarget : MonoBehaviour
     void Update()
     {
         if (!pulsing || rends == null) return;
-
         float t = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
         for (int i = 0; i < rends.Length; i++)
         {
@@ -42,15 +42,13 @@ public class ExtinguisherTarget : MonoBehaviour
     public void OnClicked()
     {
         if (owner == null) return;
-
         pulsing = false;
         for (int i = 0; i < rends.Length; i++)
         {
             if (rends[i] != null)
                 rends[i].material.color = baseColors[i];
         }
-
-        owner.OnExtinguisherTapped();
+        owner.OnTarget2Tapped();
     }
 
     public void OnHoverEnter() { }

@@ -38,6 +38,8 @@ public class ClickableHazard : MonoBehaviour
 
     private ScreenPower screenPower;
 
+    private OilCleanupEffect oilCleanup;
+
     private static readonly int EmissionColorID = Shader.PropertyToID("_EmissionColor");
 
     private void Start()
@@ -53,6 +55,8 @@ public class ClickableHazard : MonoBehaviour
             Debug.LogWarning($"[ClickableHazard] '{gameObject.name}' has no HazardDialogue!");
 
         screenPower = GetComponent<ScreenPower>();
+
+        oilCleanup = GetComponent<OilCleanupEffect>();
 
         HazardCounterManager.Instance.RegisterHazard();
     }
@@ -183,6 +187,9 @@ public class ClickableHazard : MonoBehaviour
 
         if (screenPower != null)
             screenPower.TurnOff();
+
+        if (oilCleanup != null)
+            oilCleanup.Clean();
 
         if (dialogueData != null)
         {

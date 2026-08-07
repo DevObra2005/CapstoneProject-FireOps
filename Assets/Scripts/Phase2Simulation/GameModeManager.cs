@@ -13,6 +13,32 @@ public class GameModeManager : MonoBehaviour
     // are found, and RESET by SimulationManager when Phase 2 ends.
     // -------------------------------------------------------
 
+    // =======================================================
+    // DEVELOPER TESTING TOGGLE
+    // -------------------------------------------------------
+    // Tick this in the Inspector to SKIP Phase 1 and boot
+    // straight into Phase 2 when you press Play.
+    //
+    // WHY IT LIVES HERE, AT THE TOP OF Awake():
+    // The guard below (!intentionalTransition) force-resets
+    // SimulationMode to 0 on every fresh load. That is what
+    // protects you from a crash leaving the game stuck in
+    // Phase 2. But it ALSO means any outside script writing
+    // SimulationMode = 1 gets wiped before Start() reads it.
+    // So the only place a manual override can work is BEFORE
+    // that guard runs.
+    //
+    // SHIP SAFETY:
+    // The logic is wrapped in #if UNITY_EDITOR, so it is
+    // stripped out of the Android/iOS build entirely. Even if
+    // you forget to untick it, the APK cannot skip Phase 1.
+    // =======================================================
+    [Header("=== DEVELOPER TESTING (Editor Only) ===")]
+    [Tooltip("Skip Phase 1 and start directly in Phase 2. " +
+             "Editor only - has no effect in a built APK. " +
+             "UNTICK before recording a demo or defending.")]
+    public bool forcePhase2ForTesting = false;
+
     [Header("Phase 1 Objects (Hazard Identification)")]
     public GameObject phase1UI;
     public GameObject hazardObjects;
@@ -26,7 +52,7 @@ public class GameModeManager : MonoBehaviour
     // directly here. Hidden in Phase 1, shown in Phase 2.
     public GameObject handRig;
 
-    // NEW: the Phase2Objects container (holds the Phase 2 extinguisher
+    // The Phase2Objects container (holds the Phase 2 extinguisher
     // and the office fire). These must NOT appear during Phase 1, so
     // we hide the whole container in Phase 1 and show it in Phase 2.
     public GameObject phase2Objects;
@@ -45,6 +71,26 @@ public class GameModeManager : MonoBehaviour
 
     private void Awake()
     {
+#if UNITY_EDITOR
+        // ---- TESTING OVERRIDE ----
+        // Runs BEFORE the reset guard below, otherwise the guard
+        // would immediately wipe our forced value back to 0.
+        if (forcePhase2ForTesting)
+        {
+            PlayerPrefs.SetInt("SimulationMode", 1);
+            PlayerPrefs.Save();
+
+            // Clear the flag so behaviour stays consistent with
+            // a normal load. We already forced the value we want.
+            intentionalTransition = false;
+
+            Debug.LogWarning("[GameModeManager] TESTING MODE: " +
+                             "Phase 1 skipped, booting straight into Phase 2. " +
+                             "Untick 'Force Phase 2 For Testing' to restore normal flow.");
+            return;
+        }
+#endif
+
         // If the scene loaded WITHOUT an intentional transition,
         // it means the game launched fresh (or crashed last time).
         // Reset SimulationMode to 0 so we always start in Phase 1.
@@ -87,7 +133,7 @@ public class GameModeManager : MonoBehaviour
         // Hide the hands during hazard identification.
         if (handRig != null) handRig.SetActive(false);
 
-        // NEW: hide the Phase 2 objects (fire + Phase 2 extinguisher).
+        // Hide the Phase 2 objects (fire + Phase 2 extinguisher).
         if (phase2Objects != null) phase2Objects.SetActive(false);
     }
 
@@ -102,7 +148,7 @@ public class GameModeManager : MonoBehaviour
         // Show the hands during the simulation.
         if (handRig != null) handRig.SetActive(true);
 
-        // NEW: show the Phase 2 objects (fire + Phase 2 extinguisher).
+        // Show the Phase 2 objects (fire + Phase 2 extinguisher).
         if (phase2Objects != null) phase2Objects.SetActive(true);
     }
 

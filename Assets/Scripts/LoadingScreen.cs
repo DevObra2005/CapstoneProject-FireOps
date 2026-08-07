@@ -18,10 +18,8 @@ public class LoadingScreen : MonoBehaviour
     [Header("Timing")]
     [Tooltip("Minimum seconds the bar takes to fill, even on a fast load")]
     public float minDuration = 2f;
-
     [Tooltip("Pause at 100% before swapping scenes")]
     public float holdAtFull = 0.25f;
-
     [Tooltip("Extra frames held after the scene activates, so it has rendered")]
     public int settleFrames = 2;
 
@@ -52,8 +50,15 @@ public class LoadingScreen : MonoBehaviour
             Debug.LogWarning("[LoadingScreen] Already loading — ignoring duplicate call.");
             return;
         }
-
         isLoading = true;
+
+        // Stop the persistent FRONT-END music (menu + selection scene) the
+        // moment the loading screen appears. This is the "leaving the
+        // front-end" point — the player has committed to loading a scene.
+        // Null-guarded so it's safe when no front-end music exists (e.g.
+        // the Phase 1 -> Phase 2 transition, where it's already stopped).
+        if (BackgroundMusic.Instance != null)
+            BackgroundMusic.Instance.Stop();
 
         if (taglineText != null) taglineText.text = tagline;
         if (barFill != null) barFill.fillAmount = 0f;
@@ -122,7 +127,6 @@ public class LoadingScreen : MonoBehaviour
         if (panel != null) panel.SetActive(false);
         if (barFill != null) barFill.fillAmount = 0f;
         if (percentText != null) percentText.text = "0%";
-
         isLoading = false;
     }
 }

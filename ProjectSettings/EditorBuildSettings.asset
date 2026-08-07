@@ -29,6 +29,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Classroom3DScene.unity
     guid: a4874e22328a24644b7021bc82e4a4c5
+  - enabled: 1
+    path: Assets/Scenes/PerformanceResultsScene.unity
+    guid: 879df61d1b50b6f49b0b4e1bd3d9db46
+  - enabled: 1
+    path: Assets/Scenes/ResultsDetailScene.unity
+    guid: a75c0081ec2d6f84f9a1b3958184a341
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

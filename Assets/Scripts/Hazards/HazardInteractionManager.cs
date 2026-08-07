@@ -11,9 +11,19 @@ public class HazardInteractionManager : MonoBehaviour
     // Handles hover highlight and click detection for:
     //   Phase 1 — ClickableHazard (identify the hazard)
     //   Phase 1 — HazardActionTarget (perform the correct action)
-    //   Transition — AlarmTarget (learn the fire alarm)
-    //   Transition — ExtinguisherTarget (bridge to Phase 2)
+    //   Transition — AlarmTarget / ExtinguisherTarget
     //   Phase 2 — SimulationInteractable
+    //   Phase 2 — IInteractable (e.g. the evacuation Door)   <-- NEW
+    //
+    // ACTION LOCK:
+    // While a HazardActionTarget is armed (ActiveTarget != null), only that
+    // armed target responds; all other hazards are ignored.
+    //
+    // NEW THIS UPDATE:
+    // In Phase 2, taps now ALSO reach IInteractable objects (the Door).
+    // Before, Phase 2 only handled SimulationInteractable, so the Door —
+    // which implements IInteractable, not SimulationInteractable — never
+    // had its Interact() called, and tapping it did nothing.
     // -------------------------------------------------------
 
     [Header("Raycast")]
@@ -21,7 +31,6 @@ public class HazardInteractionManager : MonoBehaviour
     public GameObject interactPrompt;
 
     [Header("Reticle Feedback (optional)")]
-    [Tooltip("Reticle image that changes colour when something is targetable")]
     public UnityEngine.UI.Image reticle;
     public Color reticleIdleColor = new Color(1f, 1f, 1f, 0.55f);
     public Color reticleHitColor = new Color(0.98f, 0.76f, 0.18f, 1f);
@@ -42,15 +51,8 @@ public class HazardInteractionManager : MonoBehaviour
     private const float TAP_MAX_DURATION = 0.35f;
     private const float TAP_MAX_MOVEMENT = 40f;
 
-    private void OnEnable()
-    {
-        EnhancedTouchSupport.Enable();
-    }
-
-    private void OnDisable()
-    {
-        EnhancedTouchSupport.Disable();
-    }
+    private void OnEnable() { EnhancedTouchSupport.Enable(); }
+    private void OnDisable() { EnhancedTouchSupport.Disable(); }
 
     private void Start()
     {
@@ -70,7 +72,6 @@ public class HazardInteractionManager : MonoBehaviour
 
     private void Update()
     {
-        // Block input while the BFP dialogue is open
         if (DialogueManager.Instance != null && DialogueManager.Instance.IsDialogueActive())
         {
             ClearHazardHover();
@@ -141,7 +142,6 @@ public class HazardInteractionManager : MonoBehaviour
         return false;
     }
 
-    // Smoothly animates the reticle between idle and "you can tap this" states
     private void SetReticleState(bool targetable)
     {
         if (reticle == null) return;
@@ -149,9 +149,7 @@ public class HazardInteractionManager : MonoBehaviour
         Color target = targetable ? reticleHitColor : reticleIdleColor;
         reticle.color = Color.Lerp(reticle.color, target, Time.deltaTime * 12f);
 
-        Vector3 wanted = targetable
-            ? reticleBaseScale * reticleScaleOnHit
-            : reticleBaseScale;
+        Vector3 wanted = targetable ? reticleBaseScale * reticleScaleOnHit : reticleBaseScale;
         reticle.transform.localScale = Vector3.Lerp(
             reticle.transform.localScale, wanted, Time.deltaTime * 12f);
     }
@@ -164,9 +162,7 @@ public class HazardInteractionManager : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance,
             Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
         {
-            // Alarm transition target — highest priority
-            AlarmTarget alarmTarget =
-                hit.collider.GetComponentInParent<AlarmTarget>();
+            AlarmTarget alarmTarget = hit.collider.GetComponentInParent<AlarmTarget>();
             if (alarmTarget != null)
             {
                 if (interactPrompt != null) interactPrompt.SetActive(true);
@@ -176,9 +172,7 @@ public class HazardInteractionManager : MonoBehaviour
                 return;
             }
 
-            // Extinguisher transition target
-            ExtinguisherTarget extTarget =
-                hit.collider.GetComponentInParent<ExtinguisherTarget>();
+            ExtinguisherTarget extTarget = hit.collider.GetComponentInParent<ExtinguisherTarget>();
             if (extTarget != null)
             {
                 if (interactPrompt != null) interactPrompt.SetActive(true);
@@ -188,9 +182,7 @@ public class HazardInteractionManager : MonoBehaviour
                 return;
             }
 
-            // Action target (phone, tower, etc.)
-            HazardActionTarget actionTarget =
-                hit.collider.GetComponentInParent<HazardActionTarget>();
+            HazardActionTarget actionTarget = hit.collider.GetComponentInParent<HazardActionTarget>();
             if (actionTarget != null)
             {
                 if (interactPrompt != null) interactPrompt.SetActive(true);
@@ -200,7 +192,15 @@ public class HazardInteractionManager : MonoBehaviour
                 return;
             }
 
-            // Phase 1 — highlight ClickableHazard
+            if (HazardActionTarget.ActiveTarget != null)
+            {
+                ClearHazardHover();
+                ClearSimHover();
+                SetReticleState(false);
+                if (interactPrompt != null) interactPrompt.SetActive(false);
+                return;
+            }
+
             ClickableHazard hazard = hit.collider.GetComponentInParent<ClickableHazard>();
             if (hazard != null)
             {
@@ -216,12 +216,9 @@ public class HazardInteractionManager : MonoBehaviour
                 return;
             }
 
-            // Phase 2 — highlight SimulationInteractable
             if (PlayerPrefs.GetInt("SimulationMode", 0) == 1)
             {
-                SimulationInteractable sim =
-                    hit.collider.GetComponentInParent<SimulationInteractable>();
-
+                SimulationInteractable sim = hit.collider.GetComponentInParent<SimulationInteractable>();
                 if (sim != null)
                 {
                     if (currentHoveredSim != sim)
@@ -235,10 +232,20 @@ public class HazardInteractionManager : MonoBehaviour
                     ClearHazardHover();
                     return;
                 }
+
+                // NEW: Phase 2 — hover feedback for IInteractable (the Door).
+                IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+                if (interactable != null)
+                {
+                    if (interactPrompt != null) interactPrompt.SetActive(true);
+                    SetReticleState(true);
+                    ClearHazardHover();
+                    ClearSimHover();
+                    return;
+                }
             }
         }
 
-        // Nothing targetable
         ClearHazardHover();
         ClearSimHover();
         SetReticleState(false);
@@ -273,40 +280,36 @@ public class HazardInteractionManager : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance,
             Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
         {
-            // Alarm transition target — checked FIRST
-            AlarmTarget alarmTarget =
-                hit.collider.GetComponentInParent<AlarmTarget>();
+            AlarmTarget alarmTarget = hit.collider.GetComponentInParent<AlarmTarget>();
             if (alarmTarget != null)
             {
-                Debug.Log("[HazardInteractionManager] Alarm clicked: "
-                    + hit.collider.name);
+                Debug.Log("[HazardInteractionManager] Alarm clicked: " + hit.collider.name);
                 alarmTarget.OnClicked();
                 return;
             }
 
-            // Extinguisher transition target
-            ExtinguisherTarget extTarget =
-                hit.collider.GetComponentInParent<ExtinguisherTarget>();
+            ExtinguisherTarget extTarget = hit.collider.GetComponentInParent<ExtinguisherTarget>();
             if (extTarget != null)
             {
-                Debug.Log("[HazardInteractionManager] Extinguisher clicked: "
-                    + hit.collider.name);
+                Debug.Log("[HazardInteractionManager] Extinguisher clicked: " + hit.collider.name);
                 extTarget.OnClicked();
                 return;
             }
 
-            // Action target (phone, report point, etc.)
-            HazardActionTarget actionTarget =
-                hit.collider.GetComponentInParent<HazardActionTarget>();
+            HazardActionTarget actionTarget = hit.collider.GetComponentInParent<HazardActionTarget>();
             if (actionTarget != null)
             {
-                Debug.Log("[HazardInteractionManager] Action target clicked: "
-                    + hit.collider.name);
+                Debug.Log("[HazardInteractionManager] Action target clicked: " + hit.collider.name);
                 actionTarget.OnClicked();
                 return;
             }
 
-            // Phase 1 — click ClickableHazard
+            if (HazardActionTarget.ActiveTarget != null)
+            {
+                Debug.Log("[HazardInteractionManager] Action in progress — ignoring tap on other objects.");
+                return;
+            }
+
             ClickableHazard hazard = hit.collider.GetComponentInParent<ClickableHazard>();
             if (hazard != null)
             {
@@ -315,16 +318,26 @@ public class HazardInteractionManager : MonoBehaviour
                 return;
             }
 
-            // Phase 2 — click SimulationInteractable
             if (PlayerPrefs.GetInt("SimulationMode", 0) == 1)
             {
-                SimulationInteractable sim =
-                    hit.collider.GetComponentInParent<SimulationInteractable>();
+                SimulationInteractable sim = hit.collider.GetComponentInParent<SimulationInteractable>();
                 if (sim != null)
                 {
-                    Debug.Log("[HazardInteractionManager] Phase 2 clicked: "
-                        + hit.collider.name);
+                    Debug.Log("[HazardInteractionManager] Phase 2 sim clicked: " + hit.collider.name);
                     sim.Interact();
+                    return;
+                }
+
+                // NEW: Phase 2 — call IInteractable (the evacuation Door).
+                // The Door implements IInteractable, not SimulationInteractable,
+                // so without this branch its Interact() was never called and
+                // tapping the door did nothing.
+                IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+                if (interactable != null)
+                {
+                    Debug.Log("[HazardInteractionManager] Phase 2 IInteractable clicked: " + hit.collider.name);
+                    interactable.Interact();
+                    return;
                 }
             }
         }

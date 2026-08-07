@@ -9,10 +9,22 @@ public class TimerUI : MonoBehaviour
     // and updates the timer display.
     // No step instructions — player figures out what to do
     // by exploring the environment.
+    //
+    // Displays a raw SECONDS countdown (90, 89, 88 ... 1, 0)
+    // instead of MM:SS, so a 90-second timer reads as "90 sec"
+    // rather than "01:30".
     // -------------------------------------------------------
 
     [Header("UI References")]
     [SerializeField] private TextMeshProUGUI timerText;
+
+    [Header("Display")]
+    [Tooltip("Text after the number. Examples: \" sec\", \"s\", \" seconds\", " +
+             "or leave empty for just the number.")]
+    [SerializeField] private string suffix = " sec";
+
+    [Tooltip("Seconds remaining at/under which the timer turns red for urgency.")]
+    [SerializeField] private float urgentThreshold = 30f;
 
     private void Update()
     {
@@ -24,15 +36,14 @@ public class TimerUI : MonoBehaviour
     {
         float t = SimulationManager.Instance.TimeRemaining;
 
-        // Convert seconds into MM:SS format
-        int minutes = Mathf.FloorToInt(t / 60f);
-        int seconds = Mathf.FloorToInt(t % 60f);
+        // Round UP so the last second still shows "1" before hitting "0",
+        // and the clock never displays a value below 0.
+        int secondsLeft = Mathf.Max(0, Mathf.CeilToInt(t));
 
-        // {0:00} adds leading zero — so 5 seconds shows 00:05 not 0:5
-        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+        timerText.text = secondsLeft + suffix;
 
-        // Turn red when under 30 seconds — visual urgency for the player
-        if (t <= 30f)
+        // Turn red when under the urgent threshold — visual urgency.
+        if (t <= urgentThreshold)
             timerText.color = Color.red;
         else
             timerText.color = Color.white;
