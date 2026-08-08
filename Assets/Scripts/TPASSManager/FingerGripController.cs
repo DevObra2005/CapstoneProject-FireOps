@@ -2,148 +2,181 @@ using UnityEngine;
 
 // -------------------------------------------------------
 // WHAT THIS DOES:
-// Smoothly curls finger bones into a grip pose and back.
-// No animation clips - just a rotation added on top of each
-// finger's natural pose.
+// Shapes the fingers into a grip and curls them, using
+// PER-BONE settings instead of one global axis.
 //
-// HOW IT WORKS: at startup it memorizes each finger's OPEN pose.
-// Then every frame it applies (curlAngle * gripAmount) degrees
-// of rotation on top of that memorized pose.
+// WHY PER-BONE:
+// Every finger bone in a Blender rig has its own local
+// orientation. The thumb does not point the same way as the
+// index finger. So a single "curl on X" setting can never
+// suit all of them - some bend correctly, others splay
+// sideways or twist. Giving each bone its own axis fixes that.
 //
-// WHAT'S NEW IN v2 (all optional - old setups behave the same):
+// THE TWO LAYERS:
 //
-//   restGrip    - the grip level the hand SITS AT normally.
-//                 Left hand: 0 (open when not holding anything).
-//                 Right hand: ~0.8 (always holding the extinguisher).
+//   BASE OFFSET  - a permanent rotation added to a bone, always.
+//                  This is how you SHAPE the hand around the
+//                  lever: spread the fingers, angle the thumb,
+//                  bend a knuckle further than its neighbours.
+//                  Set these in the Inspector OUTSIDE Play mode
+//                  and they persist.
 //
-//   startGripped- begin already at restGrip instead of animating
-//                 open-to-closed on the first frame.
+//   CURL         - an extra rotation on top of the base offset,
+//                  driven by the grip amount (0 to 1). This is
+//                  the squeeze.
 //
-//   boneMultipliers - per-bone curl scaling. The thumb opposes the
-//                 fingers, so it should curl LESS (or negative, to
-//                 bend the other way). Leave empty for uniform curl.
-//
-//   SetGripAmount(float) - blend to any value between 0 and 1
-//                 instead of just fully open / fully closed.
-//
-// IMPORTANT: the fingers must be in their natural OPEN pose when
-// the game starts. This script does the curling from there.
+// So: base offset builds the grip pose, curl tightens it.
+// You no longer have to hand-pose bones in Play mode and copy
+// numbers back - the base offsets ARE the pose, and they save.
 // -------------------------------------------------------
 
 public class FingerGripController : MonoBehaviour
 {
     public enum CurlAxis { X, Y, Z }
 
+    [System.Serializable]
+    public class FingerBone
+    {
+        [Tooltip("The bone transform, e.g. f_index.01.R")]
+        public Transform bone;
+
+        [Header("Grip Shape (always applied)")]
+        [Tooltip("Permanent rotation added to this bone's rest pose. " +
+                 "Use this to SHAPE the hand around the lever. " +
+                 "Set it outside Play mode - it saves.")]
+        public Vector3 baseOffset = Vector3.zero;
+
+        [Header("Curl (added on top, driven by grip amount)")]
+        [Tooltip("Which LOCAL axis THIS bone curls around. " +
+                 "Different bones often need different axes.")]
+        public CurlAxis curlAxis = CurlAxis.X;
+
+        [Tooltip("How many degrees this bone curls at full grip. " +
+                 "Negative curls the opposite way (useful for the thumb).")]
+        public float curlAngle = 50f;
+    }
+
     [Header("Finger Bones")]
-    [Tooltip("Drag the finger bones here, e.g. palm_index.R, f_index.01.R, f_index.02.R ... " +
-             "Add deeper knuckle bones too for a rounder, more natural curl.")]
-    [SerializeField] private Transform[] fingerBones;
+    [Tooltip("One entry per bone. Each has its own shape offset, " +
+             "curl axis, and curl angle.")]
+    [SerializeField] private FingerBone[] fingerBones;
 
-    [Header("Per-Bone Curl Strength (optional)")]
-    [Tooltip("OPTIONAL. One value per bone, matching the order above. " +
-             "1 = full curl, 0.5 = half, -1 = curls the opposite way (useful for the thumb). " +
-             "Leave this array EMPTY to curl every bone equally.")]
-    [SerializeField] private float[] boneMultipliers;
-
-    [Header("Curl Settings")]
-    [Tooltip("How many degrees each bone bends at full grip. 40-70 looks natural.")]
-    [SerializeField] private float curlAngle = 55f;
-
-    [Tooltip("Which LOCAL axis the fingers bend around. X is correct for most rigs. " +
-             "If the curl looks sideways or the fingers splay, try Y or Z.")]
-    [SerializeField] private CurlAxis axis = CurlAxis.X;
-
-    [Tooltip("How fast the curl blends in/out. Higher = snappier.")]
+    [Header("Curl Blending")]
+    [Tooltip("How fast the curl blends in and out. Higher = snappier.")]
     [SerializeField] private float curlSpeed = 8f;
 
     [Header("Resting Grip")]
-    [Tooltip("The grip level the hand sits at when NOT actively gripping. " +
-             "0 = fully open (left hand, empty). " +
-             "0.7-0.85 = permanently holding something (right hand on the extinguisher).")]
+    [Tooltip("Grip level when not actively squeezing. " +
+             "0 = open hand. 0.7-0.85 = holding something.")]
     [Range(0f, 1f)]
     [SerializeField] private float restGrip = 0f;
 
-    [Tooltip("Start already at restGrip instead of animating into it on the first frame. " +
-             "Tick this for the right hand so it is holding the extinguisher immediately.")]
+    [Tooltip("Start already at restGrip instead of blending into it.")]
     [SerializeField] private bool startGripped = false;
 
-    // Each finger's natural OPEN pose, memorized at startup.
-    private Quaternion[] openRotations;
+    [Header("Live Preview")]
+    [Tooltip("Tick to see the grip shape in the Scene view WITHOUT " +
+             "entering Play mode. Useful while dialling in baseOffset. " +
+             "Untick when done.")]
+    [SerializeField] private bool previewInEditor = false;
 
-    // 0 = fully open, 1 = fully gripped. Blends smoothly between.
+    [Tooltip("Grip amount used by the editor preview.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float previewGrip = 0.8f;
+
+    // Each bone's untouched rest pose, memorised once.
+    private Quaternion[] restRotations;
+
+    // 0 = open, 1 = fully gripped.
     private float grip = 0f;
     private float gripTarget = 0f;
 
     private void Start()
     {
-        openRotations = new Quaternion[fingerBones.Length];
+        CacheRestPose();
+        gripTarget = restGrip;
+        grip = startGripped ? restGrip : 0f;
+    }
+
+    private void CacheRestPose()
+    {
+        if (fingerBones == null) return;
+
+        restRotations = new Quaternion[fingerBones.Length];
         for (int i = 0; i < fingerBones.Length; i++)
         {
-            if (fingerBones[i] != null)
-                openRotations[i] = fingerBones[i].localRotation;
+            if (fingerBones[i] != null && fingerBones[i].bone != null)
+                restRotations[i] = fingerBones[i].bone.localRotation;
         }
-
-        // Sit at the resting grip level by default.
-        gripTarget = restGrip;
-
-        // If requested, snap straight there instead of blending in.
-        grip = startGripped ? restGrip : 0f;
     }
 
     private void LateUpdate()
     {
-        if (openRotations == null) return;
+        if (restRotations == null) return;
 
-        // Slide the grip amount smoothly toward its target...
         grip = Mathf.MoveTowards(grip, gripTarget, curlSpeed * Time.deltaTime);
+        ApplyPose(grip);
+    }
 
-        // ...and apply that much curl on top of each open pose.
-        Vector3 axisVector =
-            axis == CurlAxis.X ? Vector3.right :
-            axis == CurlAxis.Y ? Vector3.up : Vector3.forward;
-
+    // -------------------------------------------------------
+    // Applies base offset + curl to every bone.
+    // -------------------------------------------------------
+    private void ApplyPose(float gripAmount)
+    {
         for (int i = 0; i < fingerBones.Length; i++)
         {
-            if (fingerBones[i] == null) continue;
+            FingerBone fb = fingerBones[i];
+            if (fb == null || fb.bone == null) continue;
 
-            // Per-bone strength. Defaults to 1 when the array is empty
-            // or shorter than the bone list.
-            float multiplier = 1f;
-            if (boneMultipliers != null && i < boneMultipliers.Length)
-                multiplier = boneMultipliers[i];
+            // 1. Start from the bone's original rest pose.
+            Quaternion result = restRotations[i];
 
-            float angle = curlAngle * grip * multiplier;
+            // 2. Add the permanent shape offset (builds the grip pose).
+            result *= Quaternion.Euler(fb.baseOffset);
 
-            fingerBones[i].localRotation =
-                openRotations[i] * Quaternion.AngleAxis(angle, axisVector);
+            // 3. Add the curl on top (the squeeze), on THIS bone's own axis.
+            Vector3 axisVector =
+                fb.curlAxis == CurlAxis.X ? Vector3.right :
+                fb.curlAxis == CurlAxis.Y ? Vector3.up : Vector3.forward;
+
+            result *= Quaternion.AngleAxis(fb.curlAngle * gripAmount, axisVector);
+
+            fb.bone.localRotation = result;
         }
     }
+
+#if UNITY_EDITOR
+    // Lets you shape the hand in the Scene view without pressing Play.
+    private void OnValidate()
+    {
+        if (!previewInEditor || !Application.isPlaying == false) return;
+        if (fingerBones == null || fingerBones.Length == 0) return;
+
+        // Cache on first preview so we always build from the true rest pose.
+        if (restRotations == null || restRotations.Length != fingerBones.Length)
+            CacheRestPose();
+
+        ApplyPose(previewGrip);
+    }
+#endif
 
     // -------------------------------------------------------
     // PUBLIC API
     // -------------------------------------------------------
 
-    /// <summary>
-    /// true  = curl to FULL grip (1.0) - use for the squeeze.
-    /// false = relax back to restGrip (not necessarily open).
-    /// </summary>
+    /// <summary>true = full grip (squeeze). false = back to restGrip.</summary>
     public void SetGrip(bool gripped)
     {
         gripTarget = gripped ? 1f : restGrip;
     }
 
-    /// <summary>
-    /// Blend to any grip level between 0 (open) and 1 (fully closed).
-    /// Useful for partial squeezes or gradual grips.
-    /// </summary>
+    /// <summary>Blend to any grip level between 0 and 1.</summary>
     public void SetGripAmount(float amount)
     {
         gripTarget = Mathf.Clamp01(amount);
     }
 
-    /// <summary>
-    /// Return to the resting grip level.
-    /// </summary>
+    /// <summary>Return to the resting grip level.</summary>
     public void ReleaseToRest()
     {
         gripTarget = restGrip;
