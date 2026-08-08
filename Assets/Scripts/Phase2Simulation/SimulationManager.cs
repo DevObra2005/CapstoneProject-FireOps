@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -12,11 +13,22 @@ public class SimulationManager : MonoBehaviour
     // step results, and triggers Win or Lose when the simulation
     // ends.
     //
-    // The timer does not start the moment the scene loads.
-    // Phase2Briefing plays the BFP officer's intro first, then
-    // calls BeginSimulation() when the player taps "START".
-    // Until then simActive stays false, so the clock is frozen
-    // and no penalties can be taken.
+    // NEW IN THIS VERSION - EXTINGUISHER ANIMATION:
+    // Every correct TPASS action now also plays the matching
+    // Blender clip on the extinguisher. That is what makes the
+    // PIN twist and pull out, and the HOSE bend and sweep.
+    //
+    // WHY IT LIVES HERE:
+    // RegisterCorrectAction already fires exactly once per
+    // correct step, and already knows WHICH step it was. Putting
+    // the animation call here means one place to maintain, and
+    // it can never fire on a wrong action.
+    //
+    // WHY THE HANDS DO NOT NEED THEIR OWN CLIPS:
+    // Grip_Pin is parented to Pin, and Grip_Nozzle to the hose
+    // tip bone. Those are the IK targets. So when a clip moves
+    // the part, the marker moves, and the hand follows for free.
+    // One system animates the prop; IK keeps the hands attached.
     //
     // Step breakdown (Office/Classroom — TPASS):
     // 1 = Sound Alarm
@@ -39,6 +51,39 @@ public class SimulationManager : MonoBehaviour
 
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
+
+    // -------------------------------------------------------
+    [Header("Extinguisher Animation")]
+    [Tooltip("The Animator on FireExtinguisher_ABC. Plays the six Blender clips.")]
+    [SerializeField] private Animator extinguisherAnimator;
+
+    [Tooltip("Clip state names as they appear in the Animator Controller. " +
+             "Change these only if you renamed the states.")]
+    [SerializeField] private string clipTwist = "Twist";
+    [SerializeField] private string clipPull = "Pull";
+    [SerializeField] private string clipPinDrop = "PinDrop";
+    [SerializeField] private string clipAim = "Aim";
+    [SerializeField] private string clipSqueeze = "Squeeze";
+    [SerializeField] private string clipSweep = "Sweep";
+
+    [Tooltip("Seconds to wait after Pull before the pin drops to the floor.")]
+    [SerializeField] private float pinDropDelay = 0.4f;
+
+    [Header("After the Pin Drops")]
+    [Tooltip("The Pin object on the extinguisher. It is hidden once the " +
+             "PinDrop clip finishes - the pin has left the extinguisher, so " +
+             "it should not stay floating in the scene.")]
+    [SerializeField] private GameObject pinObject;
+
+    [Tooltip("The LeftHandIKController. Its ReleaseAll() is called when " +
+             "PinDrop finishes, so the left hand lets go and returns to rest " +
+             "instead of hanging in mid-air where the pin used to be.")]
+    [SerializeField] private LeftHandIKController leftHandIK;
+
+    [Tooltip("How long the PinDrop clip runs. The pin is hidden and the hand " +
+             "released after this. Check the clip length in the Inspector.")]
+    [SerializeField] private float pinDropClipLength = 0.5f;
+    // -------------------------------------------------------
 
     // --- RUNTIME STATE ---
     private float timeRemaining;
@@ -78,6 +123,9 @@ public class SimulationManager : MonoBehaviour
 
     private void ResetRuntimeState()
     {
+        // Bring the pin back for a fresh run - it was hidden last time.
+        if (pinObject != null) pinObject.SetActive(true);
+
         timeRemaining = totalTime;
         currentStep = 1;
         simActive = false;
@@ -136,8 +184,100 @@ public class SimulationManager : MonoBehaviour
         if (ActionFeedbackManager.Instance != null)
             ActionFeedbackManager.Instance.ShowCorrect(StepNames.Friendly(step.ToString()));
 
+        // >>> EXTINGUISHER ANIMATION: play the clip for this step.
+        PlayClipForStep(step);
+
         if (currentStep < 8)
             currentStep++;
+    }
+
+    // -------------------------------------------------------
+    // EXTINGUISHER ANIMATION
+    //
+    // Matched on the step's NAME rather than by comparing enum
+    // members directly. That keeps this working even if the enum
+    // is renamed or reordered later - it only cares that the name
+    // contains "Twist", "Pull", and so on.
+    // -------------------------------------------------------
+    private void PlayClipForStep(SimulationInteractable.SimStep step)
+    {
+        if (extinguisherAnimator == null) return;
+
+        string name = step.ToString();
+
+        if (name.Contains("Twist"))
+        {
+            PlayClip(clipTwist);
+        }
+        else if (name.Contains("Pull"))
+        {
+            PlayClip(clipPull);
+            // The pin leaves the hand, falls, then disappears - and the
+            // left hand lets go and returns to rest.
+            StartCoroutine(PullSequence());
+        }
+        else if (name.Contains("Aim"))
+        {
+            PlayClip(clipAim);
+        }
+        else if (name.Contains("Squeeze"))
+        {
+            PlayClip(clipSqueeze);
+        }
+        else if (name.Contains("Sweep"))
+        {
+            PlayClip(clipSweep);
+        }
+        // Sound Alarm, Grab Extinguisher and Evacuate have no clip.
+    }
+
+    // Play a state from its first frame. Play() rather than
+    // CrossFade() because the six clips animate different parts,
+    // so there is nothing to blend between - and no exit-time
+    // transitions exist, so playback stops at the end of the clip.
+    private void PlayClip(string stateName)
+    {
+        if (extinguisherAnimator == null || string.IsNullOrEmpty(stateName)) return;
+
+        extinguisherAnimator.Play(stateName, 0, 0f);
+        Debug.Log($"[SimulationManager] Extinguisher clip: {stateName}");
+    }
+
+    // -------------------------------------------------------
+    // PULL SEQUENCE
+    //
+    // Runs the whole post-Pull choreography in one place, so the
+    // timing is easy to read and easy to retune:
+    //
+    //   1. wait  -> the Pull clip finishes carrying the pin out
+    //   2. drop  -> PinDrop clip plays, pin falls
+    //   3. wait  -> the drop finishes
+    //   4. hide  -> pin disappears (it is gone from the extinguisher)
+    //   5. release -> left hand lets go and returns to rest, so it is
+    //                 not left hanging where the pin used to be
+    // -------------------------------------------------------
+    private IEnumerator PullSequence()
+    {
+        // 1 + 2: let the Pull clip carry the pin out, then drop it.
+        yield return new WaitForSeconds(pinDropDelay);
+        PlayClip(clipPinDrop);
+
+        // 3: let the drop finish.
+        yield return new WaitForSeconds(pinDropClipLength);
+
+        // 4: the pin is gone from the extinguisher - hide it.
+        if (pinObject != null)
+        {
+            pinObject.SetActive(false);
+            Debug.Log("[SimulationManager] Pin hidden after drop.");
+        }
+
+        // 5: the left hand has nothing left to hold - return it to rest.
+        if (leftHandIK != null)
+        {
+            leftHandIK.ReleaseAll();
+            Debug.Log("[SimulationManager] Left hand released to rest.");
+        }
     }
 
     // -------------------------------------------------------
