@@ -623,7 +623,7 @@ MonoBehaviour:
     m_Root: {fileID: 387023222}
     m_Mid: {fileID: 387023221}
     m_Tip: {fileID: 387023220}
-    m_Target: {fileID: 1465772149}
+    m_Target: {fileID: 1475242798}
     m_Hint: {fileID: 1126943596}
     m_TargetPositionWeight: 1
     m_TargetRotationWeight: 1
@@ -5290,6 +5290,7 @@ GameObject:
   - component: {fileID: 283207642}
   - component: {fileID: 283207641}
   - component: {fileID: 283207643}
+  - component: {fileID: 283207644}
   m_Layer: 0
   m_Name: SimulationManager
   m_TagString: Untagged
@@ -5329,6 +5330,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   resultsSubmitter: {fileID: 1363342065}
+  pressAlarm: {fileID: 283207644}
   extinguisherAnimator: {fileID: 2027549296}
   clipTwist: Twist
   clipPull: Pull
@@ -5391,6 +5393,29 @@ MonoBehaviour:
   nozzleControllerForTests: {fileID: 0}
   fingerGrip: {fileID: 4665971823350551902}
   enableTestKeys: 1
+--- !u!114 &283207644
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 283207640}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d645188765c116c439bb80664082f191, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PressAlarmController
+  rightArmIK: {fileID: 27816013}
+  rightHandTarget: {fileID: 1475242798}
+  pressTarget: {fileID: 1054436578}
+  gripHandle: {fileID: 1465772149}
+  fingerGrip: {fileID: 473489021}
+  reachDuration: 1.15
+  pressHold: 0.3
+  retractDuration: 0.3
+  pressDepth: 0.05
+  punchDuration: 0.12
+  sculptMode: 0
 --- !u!1001 &284720138
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8940,39 +8965,49 @@ MonoBehaviour:
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 4.8
+    pointAngle: 0
   - bone: {fileID: 436609144}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: -14.7
+    pointAngle: 0
   - bone: {fileID: 337014311}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: -5
+    pointAngle: 0
   - bone: {fileID: 1999815600}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: -10
+    pointAngle: 0
   - bone: {fileID: 2116269029}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: -3.68
+    pointAngle: 0
   - bone: {fileID: 1703522731}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 1
     curlAngle: 41.5
+    pointAngle: 0
   - bone: {fileID: 1179369281}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 0.54
+    pointAngle: 0
   - bone: {fileID: 1412094629}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: 58.6
+    pointAngle: 0
   curlSpeed: 8
+  pointSpeed: 10
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
+  previewPoint: 0
 --- !u!1001 &477885195
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -22096,6 +22131,7 @@ Transform:
   m_Children:
   - {fileID: 27816012}
   - {fileID: 1126943596}
+  - {fileID: 1475242798}
   m_Father: {fileID: 387023219}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1042585244
@@ -22449,6 +22485,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1895665280}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1054436577
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1054436578}
+  m_Layer: 0
+  m_Name: PressTarget
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1054436578
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1054436577}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.38930053, y: -0.33482537, z: -0.02354692, w: 0.8577777}
+  m_LocalPosition: {x: -0.3, y: 0.03, z: 1.47}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1432412427}
+  m_LocalEulerAnglesHint: {x: 40.7, y: -51.43, z: -23.4}
 --- !u!1 &1057400637 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1096226401038046443, guid: 4280f84597510394ca936debff83711f, type: 3}
@@ -28542,6 +28609,37 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: -3996760141626369306, guid: 2a89b5b90a602d145ae77fff4cf41b40, type: 3}
+--- !u!1 &1475242797
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1475242798}
+  m_Layer: 0
+  m_Name: RightArmTarget
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1475242798
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1475242797}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1042585243}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1478034147 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a2d610cfe66c32249ab7230de269b555, type: 3}
@@ -42164,6 +42262,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       insertIndex: -1
       addedObject: {fileID: 673330525}
+    - targetCorrespondingSourceObject: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1054436578}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 813094771524329438eb157cf1143aae, type: 3}
 --- !u!4 &2216348096976786966 stripped
@@ -43983,10 +44084,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FingerGripController
   fingerBones: []
   curlSpeed: 8
+  pointSpeed: 10
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
+  previewPoint: 0
 --- !u!4 &4830720616545680921
 Transform:
   m_ObjectHideFlags: 0
@@ -45842,39 +45945,49 @@ MonoBehaviour:
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
+    pointAngle: 0
   curlSpeed: 8
+  pointSpeed: 10
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
+  previewPoint: 0
 --- !u!1001 &8186254138670169015
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -13,10 +13,16 @@ public class SimulationManager : MonoBehaviour
     // step results, and triggers Win or Lose when the simulation
     // ends.
     //
-    // NEW IN THIS VERSION - EXTINGUISHER ANIMATION:
-    // Every correct TPASS action now also plays the matching
-    // Blender clip on the extinguisher. That is what makes the
-    // PIN twist and pull out, and the HOSE bend and sweep.
+    // EXTINGUISHER ANIMATION:
+    // Every correct TPASS action also plays the matching Blender
+    // clip on the extinguisher. That is what makes the PIN twist
+    // and pull out, and the HOSE bend and sweep.
+    //
+    // NEW IN THIS VERSION - ALARM PRESS:
+    // Step 1 now also plays the right-hand press animation through
+    // PressAlarmController. That is a HAND animation driven by IK,
+    // not an extinguisher clip, so it is dispatched separately -
+    // see the note inside PlayClipForStep.
     //
     // WHY IT LIVES HERE:
     // RegisterCorrectAction already fires exactly once per
@@ -31,8 +37,8 @@ public class SimulationManager : MonoBehaviour
     // One system animates the prop; IK keeps the hands attached.
     //
     // Step breakdown (Office/Classroom — TPASS):
-    // 1 = Sound Alarm
-    // 2 = Grab Extinguisher
+    // 1 = Sound Alarm          <- right hand press (PressAlarmController)
+    // 2 = Grab Extinguisher    <- handled by ExtinguisherGrab
     // 3 = TPASS Twist
     // 4 = TPASS Pull
     // 5 = TPASS Aim
@@ -51,6 +57,15 @@ public class SimulationManager : MonoBehaviour
 
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
+
+    // -------------------------------------------------------
+    [Header("Alarm Press Animation")]
+    [Tooltip("The PressAlarmController. Plays the right-hand reach and " +
+             "press when the player sounds the alarm on Step 1. " +
+             "Leave empty to skip the animation entirely - the step still " +
+             "registers normally.")]
+    [SerializeField] private PressAlarmController pressAlarm;
+    // -------------------------------------------------------
 
     // -------------------------------------------------------
     [Header("Extinguisher Animation")]
@@ -126,6 +141,11 @@ public class SimulationManager : MonoBehaviour
         // Bring the pin back for a fresh run - it was hidden last time.
         if (pinObject != null) pinObject.SetActive(true);
 
+        // Withdraw the right arm and unfold the fingers, in case a run
+        // was abandoned mid-press. Without this the hand could still be
+        // held out at the button when the next run starts.
+        if (pressAlarm != null) pressAlarm.ResetState();
+
         timeRemaining = totalTime;
         currentStep = 1;
         simActive = false;
@@ -184,7 +204,7 @@ public class SimulationManager : MonoBehaviour
         if (ActionFeedbackManager.Instance != null)
             ActionFeedbackManager.Instance.ShowCorrect(StepNames.Friendly(step.ToString()));
 
-        // >>> EXTINGUISHER ANIMATION: play the clip for this step.
+        // >>> ANIMATION: play the hand or extinguisher animation for this step.
         PlayClipForStep(step);
 
         if (currentStep < 8)
@@ -192,18 +212,54 @@ public class SimulationManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // EXTINGUISHER ANIMATION
+    // STEP ANIMATION
     //
     // Matched on the step's NAME rather than by comparing enum
     // members directly. That keeps this working even if the enum
     // is renamed or reordered later - it only cares that the name
-    // contains "Twist", "Pull", and so on.
+    // contains "Alarm", "Twist", "Pull", and so on.
+    //
+    // ORDER MATTERS HERE.
+    // The alarm press is a HAND animation driven by IK. It does not
+    // use extinguisherAnimator at all. So it must be dispatched
+    // BEFORE the extinguisherAnimator null guard below - otherwise a
+    // scene with no Animator assigned would silently swallow the
+    // press, with no error and nothing on screen to explain why.
     // -------------------------------------------------------
     private void PlayClipForStep(SimulationInteractable.SimStep step)
     {
-        if (extinguisherAnimator == null) return;
-
         string name = step.ToString();
+
+        // --- HAND ANIMATION (no extinguisher Animator involved) ---
+        if (name.Contains("Alarm"))
+        {
+            if (pressAlarm != null)
+            {
+                pressAlarm.PlayAlarmPress();
+                Debug.Log("[SimulationManager] Alarm press animation started.");
+            }
+            return;
+        }
+
+        if (name.Contains("Grab"))
+        {
+            // Cancel any press still in flight. The press runs for about a
+            // second, and nothing stops the player tapping Grab while it is
+            // still withdrawing. If that happened, PressAlarmController would
+            // be fading rightArmIK.weight 1 -> 0 while ExtinguisherGrab fades
+            // the SAME value 0 -> 1 - two writers on one value, which stutters
+            // or snaps the arm. ResetState() stops the coroutine and zeroes
+            // the weight, so ExtinguisherGrab inherits a clean slate.
+            if (pressAlarm != null)
+            {
+                pressAlarm.ResetState();
+                Debug.Log("[SimulationManager] Alarm press cancelled - grab takes the arm.");
+            }
+            return;
+        }
+
+        // --- EXTINGUISHER CLIPS from here down ---
+        if (extinguisherAnimator == null) return;
 
         if (name.Contains("Twist"))
         {
@@ -228,7 +284,7 @@ public class SimulationManager : MonoBehaviour
         {
             PlayClip(clipSweep);
         }
-        // Sound Alarm, Grab Extinguisher and Evacuate have no clip.
+        // Evacuate has no animation.
     }
 
     // Play a state from its first frame. Play() rather than

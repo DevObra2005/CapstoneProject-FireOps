@@ -2,8 +2,8 @@ using UnityEngine;
 
 // -------------------------------------------------------
 // WHAT THIS DOES:
-// Shapes the fingers into a grip and curls them, using
-// PER-BONE settings instead of one global axis.
+// Shapes the fingers and poses them, using PER-BONE settings
+// instead of one global axis.
 //
 // WHY PER-BONE:
 // Every finger bone in a Blender rig has its own local
@@ -12,22 +12,33 @@ using UnityEngine;
 // suit all of them - some bend correctly, others splay
 // sideways or twist. Giving each bone its own axis fixes that.
 //
-// THE TWO LAYERS:
+// THE THREE LAYERS:
 //
 //   BASE OFFSET  - a permanent rotation added to a bone, always.
-//                  This is how you SHAPE the hand around the
-//                  lever: spread the fingers, angle the thumb,
-//                  bend a knuckle further than its neighbours.
-//                  Set these in the Inspector OUTSIDE Play mode
-//                  and they persist.
+//                  This is how you SHAPE the hand: spread the
+//                  fingers, angle the thumb, bend a knuckle
+//                  further than its neighbours. Set these in the
+//                  Inspector OUTSIDE Play mode and they persist.
 //
-//   CURL         - an extra rotation on top of the base offset,
-//                  driven by the grip amount (0 to 1). This is
-//                  the squeeze.
+//   CURL         - extra rotation on top of the base offset,
+//                  driven by the GRIP amount (0 to 1).
+//                  This is the squeeze around the extinguisher.
 //
-// So: base offset builds the grip pose, curl tightens it.
-// You no longer have to hand-pose bones in Play mode and copy
-// numbers back - the base offsets ARE the pose, and they save.
+//   POINT        - extra rotation on top, driven by the POINT
+//                  amount (0 to 1). This is the index-finger
+//                  pointing pose used to press the alarm button.
+//
+// GRIP AND POINT ARE INDEPENDENT DIALS.
+// They share each bone's curlAxis (the same hinge), because a
+// point is not a different direction of bend - it is the same
+// bend applied to every finger EXCEPT the index.
+//
+// So: leave pointAngle at 0 on the index bones, and give the
+// other fingers a curl. That is the entire pointing pose.
+//
+// In practice the two never overlap in time: point rises for the
+// alarm press and returns to 0 before the extinguisher grab
+// begins, so they never fight each other.
 // -------------------------------------------------------
 
 public class FingerGripController : MonoBehaviour
@@ -46,24 +57,37 @@ public class FingerGripController : MonoBehaviour
                  "Set it outside Play mode - it saves.")]
         public Vector3 baseOffset = Vector3.zero;
 
-        [Header("Curl (added on top, driven by grip amount)")]
-        [Tooltip("Which LOCAL axis THIS bone curls around. " +
-                 "Different bones often need different axes.")]
+        [Header("Curl Axis (shared by grip and point)")]
+        [Tooltip("Which LOCAL axis THIS bone rotates around. " +
+                 "Different bones often need different axes. " +
+                 "Both the grip curl and the point pose use this axis.")]
         public CurlAxis curlAxis = CurlAxis.X;
 
+        [Header("Grip Pose (driven by grip amount)")]
         [Tooltip("How many degrees this bone curls at full grip. " +
                  "Negative curls the opposite way (useful for the thumb).")]
         public float curlAngle = 50f;
+
+        [Header("Point Pose (driven by point amount)")]
+        [Tooltip("How many degrees this bone bends at full point. " +
+                 "LEAVE AT 0 for the index finger bones so they stay " +
+                 "straight. Give the other fingers a curl to fold them " +
+                 "into the palm.")]
+        public float pointAngle = 0f;
     }
 
     [Header("Finger Bones")]
     [Tooltip("One entry per bone. Each has its own shape offset, " +
-             "curl axis, and curl angle.")]
+             "rotation axis, grip angle, and point angle.")]
     [SerializeField] private FingerBone[] fingerBones;
 
-    [Header("Curl Blending")]
-    [Tooltip("How fast the curl blends in and out. Higher = snappier.")]
+    [Header("Blending")]
+    [Tooltip("How fast the grip curl blends in and out. Higher = snappier.")]
     [SerializeField] private float curlSpeed = 8f;
+
+    [Tooltip("How fast the point pose blends in and out. " +
+             "A press should feel quicker than a grip.")]
+    [SerializeField] private float pointSpeed = 10f;
 
     [Header("Resting Grip")]
     [Tooltip("Grip level when not actively squeezing. " +
@@ -75,14 +99,19 @@ public class FingerGripController : MonoBehaviour
     [SerializeField] private bool startGripped = false;
 
     [Header("Live Preview")]
-    [Tooltip("Tick to see the grip shape in the Scene view WITHOUT " +
-             "entering Play mode. Useful while dialling in baseOffset. " +
-             "Untick when done.")]
+    [Tooltip("Tick to see the pose in the Scene view WITHOUT " +
+             "entering Play mode. Useful while dialling in baseOffset " +
+             "and pointAngle. Untick when done.")]
     [SerializeField] private bool previewInEditor = false;
 
     [Tooltip("Grip amount used by the editor preview.")]
     [Range(0f, 1f)]
     [SerializeField] private float previewGrip = 0.8f;
+
+    [Tooltip("Point amount used by the editor preview. " +
+             "Set this to 1 while sculpting the pointing pose.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float previewPoint = 0f;
 
     // Each bone's untouched rest pose, memorised once.
     private Quaternion[] restRotations;
@@ -91,11 +120,18 @@ public class FingerGripController : MonoBehaviour
     private float grip = 0f;
     private float gripTarget = 0f;
 
+    // 0 = neutral, 1 = fully pointing.
+    private float point = 0f;
+    private float pointTarget = 0f;
+
     private void Start()
     {
         CacheRestPose();
         gripTarget = restGrip;
         grip = startGripped ? restGrip : 0f;
+
+        pointTarget = 0f;
+        point = 0f;
     }
 
     private void CacheRestPose()
@@ -115,13 +151,15 @@ public class FingerGripController : MonoBehaviour
         if (restRotations == null) return;
 
         grip = Mathf.MoveTowards(grip, gripTarget, curlSpeed * Time.deltaTime);
-        ApplyPose(grip);
+        point = Mathf.MoveTowards(point, pointTarget, pointSpeed * Time.deltaTime);
+
+        ApplyPose(grip, point);
     }
 
     // -------------------------------------------------------
-    // Applies base offset + curl to every bone.
+    // Applies base offset + grip curl + point curl to every bone.
     // -------------------------------------------------------
-    private void ApplyPose(float gripAmount)
+    private void ApplyPose(float gripAmount, float pointAmount)
     {
         for (int i = 0; i < fingerBones.Length; i++)
         {
@@ -131,15 +169,19 @@ public class FingerGripController : MonoBehaviour
             // 1. Start from the bone's original rest pose.
             Quaternion result = restRotations[i];
 
-            // 2. Add the permanent shape offset (builds the grip pose).
+            // 2. Add the permanent shape offset (builds the hand shape).
             result *= Quaternion.Euler(fb.baseOffset);
 
-            // 3. Add the curl on top (the squeeze), on THIS bone's own axis.
+            // 3. Work out THIS bone's own rotation axis.
             Vector3 axisVector =
                 fb.curlAxis == CurlAxis.X ? Vector3.right :
                 fb.curlAxis == CurlAxis.Y ? Vector3.up : Vector3.forward;
 
+            // 4. Add the grip curl (the squeeze).
             result *= Quaternion.AngleAxis(fb.curlAngle * gripAmount, axisVector);
+
+            // 5. Add the point pose on top (folds fingers for the press).
+            result *= Quaternion.AngleAxis(fb.pointAngle * pointAmount, axisVector);
 
             fb.bone.localRotation = result;
         }
@@ -149,19 +191,22 @@ public class FingerGripController : MonoBehaviour
     // Lets you shape the hand in the Scene view without pressing Play.
     private void OnValidate()
     {
-        if (!previewInEditor || !Application.isPlaying == false) return;
+        // Preview is an edit-mode tool only. In Play mode the real
+        // blend in LateUpdate is in charge, so bail out.
+        if (!previewInEditor || Application.isPlaying) return;
         if (fingerBones == null || fingerBones.Length == 0) return;
 
         // Cache on first preview so we always build from the true rest pose.
         if (restRotations == null || restRotations.Length != fingerBones.Length)
             CacheRestPose();
 
-        ApplyPose(previewGrip);
+        ApplyPose(previewGrip, previewPoint);
     }
 #endif
 
     // -------------------------------------------------------
-    // PUBLIC API
+    // PUBLIC API - GRIP
+    // (unchanged - ExtinguisherGrab.cs still calls these)
     // -------------------------------------------------------
 
     /// <summary>true = full grip (squeeze). false = back to restGrip.</summary>
@@ -180,5 +225,33 @@ public class FingerGripController : MonoBehaviour
     public void ReleaseToRest()
     {
         gripTarget = restGrip;
+    }
+
+    // -------------------------------------------------------
+    // PUBLIC API - POINT
+    // (new - PressAlarmController.cs calls these)
+    // -------------------------------------------------------
+
+    /// <summary>true = index-out pointing pose. false = neutral.</summary>
+    public void SetPoint(bool pointing)
+    {
+        pointTarget = pointing ? 1f : 0f;
+    }
+
+    /// <summary>Blend to any point level between 0 and 1.</summary>
+    public void SetPointAmount(float amount)
+    {
+        pointTarget = Mathf.Clamp01(amount);
+    }
+
+    /// <summary>Snap both dials back to their starting values.
+    /// Called when a simulation run is reset.</summary>
+    public void ResetPose()
+    {
+        gripTarget = restGrip;
+        grip = restGrip;
+
+        pointTarget = 0f;
+        point = 0f;
     }
 }
