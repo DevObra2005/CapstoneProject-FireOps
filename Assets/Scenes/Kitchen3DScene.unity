@@ -8345,14 +8345,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhaseTransitionManager
   promptLines:
-  - text: "Good work \u2014 you've handled every hazard in this office."
+  - text: "Good work \u2014 you've handled every hazard in this Kitchen"
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
   - text: But knowing what causes a fire is only half of it. You also need to know
       what to do when one actually starts.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-  - text: Look for the red alarm box on the wall. Go to it.
+  - text: Look for the wet blanket. Go to it.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
   teachTarget1: {fileID: 0}
@@ -8431,7 +8431,6 @@ MonoBehaviour:
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
   confirmPanel: {fileID: 680703511}
-  phaseTwoScene: Kitchen3DScene
   loadingTagline: PREPARING SIMULATION
 --- !u!224 &1299823327
 RectTransform:
