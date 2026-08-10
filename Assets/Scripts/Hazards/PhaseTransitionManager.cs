@@ -18,6 +18,24 @@ public class PhaseTransitionManager : MonoBehaviour
     // environment needs and write matching dialogue — the script just
     // highlights each target and plays its lines, in order.
     //
+    // HOW PHASE 2 IS LOADED — READ THIS BEFORE ADDING A SCENE FIELD:
+    // Phase 2 is NOT a separate scene. Every environment scene contains
+    // BOTH phases. Phase 1 shows hazardObjects; Phase 2 shows
+    // phase2Objects and simulationSystem. GameModeManager flips between
+    // them based on the SimulationMode flag.
+    //
+    // So the transition simply RELOADS THE CURRENT SCENE, using
+    // SceneManager.GetActiveScene().name. That is why it works in Office,
+    // Kitchen and Classroom with no per-scene configuration at all.
+    //
+    // A "phaseTwoScene" string field used to live here. It was a leftover
+    // from an earlier design where Phase 2 was going to be its own scene,
+    // and nothing read it — typing a different scene name changed nothing,
+    // and neither did leaving it empty. It has been removed, because a
+    // field that looks authoritative but does nothing costs more time than
+    // it saves. Do not add it back: pointing it at another environment
+    // would load that environment's Phase 1, not this one's Phase 2.
+    //
     // NOTE: [FormerlySerializedAs] preserves the OLD field assignments
     // (alarmPanel, alarmLines, fireExtinguisher, extinguisherLines) so the
     // existing Office scene keeps its references after this rename — no
@@ -54,11 +72,7 @@ public class PhaseTransitionManager : MonoBehaviour
     [Header("Confirm Screen")]
     public GameObject confirmPanel;
 
-    [Header("Scene")]
-    [Tooltip("Phase 2 always reloads the CURRENT scene. This field is kept " +
-             "for reference only and is no longer used to pick the scene.")]
-    public string phaseTwoScene = "Office3DScene";
-
+    [Header("Loading Screen")]
     [Tooltip("Text shown on the loading screen during the transition")]
     public string loadingTagline = "PREPARING SIMULATION";
 
@@ -213,9 +227,9 @@ public class PhaseTransitionManager : MonoBehaviour
         if (confirmPanel != null)
             confirmPanel.SetActive(false);
 
-        // Phase 2 is ALWAYS the same scene reloaded. Use the active scene
-        // name so this works in Office, Kitchen, and Classroom without any
-        // per-scene hardcoding. (Fixes the bug where Kitchen loaded Office.)
+        // Phase 2 is ALWAYS the same scene reloaded. Using the active scene
+        // name means this works in Office, Kitchen, and Classroom with no
+        // per-scene hardcoding and nothing to configure in the Inspector.
         string sceneToLoad = SceneManager.GetActiveScene().name;
 
         // Use the persistent loading screen if it exists,
