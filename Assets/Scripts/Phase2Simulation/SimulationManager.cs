@@ -18,11 +18,24 @@ public class SimulationManager : MonoBehaviour
     // clip on the extinguisher. That is what makes the PIN twist
     // and pull out, and the HOSE bend and sweep.
     //
-    // NEW IN THIS VERSION - ALARM PRESS:
-    // Step 1 now also plays the right-hand press animation through
+    // ALARM PRESS:
+    // Step 1 also plays the right-hand press animation through
     // PressAlarmController. That is a HAND animation driven by IK,
     // not an extinguisher clip, so it is dispatched separately -
     // see the note inside PlayClipForStep.
+    //
+    // NEW IN THIS VERSION - MASKED ANIMATOR LAYERS:
+    // The six clips are frame ranges carved out of ONE long Blender
+    // timeline (Squeeze 1-23, Aim 24-66, Sweep 66-115, Twist 130-152,
+    // Pull 152-165, PinDrop 165-180). Jumping straight to Twist's
+    // range also snapped the HOSE to whatever pose was baked at that
+    // frame - the hose appeared to teleport rather than animate.
+    //
+    // The fix is two masked layers on the Animator. PinLayer can only
+    // write to the lever bones and Pin; HoseLayer can only write to
+    // Bone.012 and below. A pin clip therefore CANNOT move the hose,
+    // no matter what its frames contain. See the layer index fields
+    // below.
     //
     // WHY IT LIVES HERE:
     // RegisterCorrectAction already fires exactly once per
@@ -31,19 +44,19 @@ public class SimulationManager : MonoBehaviour
     // it can never fire on a wrong action.
     //
     // WHY THE HANDS DO NOT NEED THEIR OWN CLIPS:
-    // Grip_Pin is parented to Pin, and Grip_Nozzle to the hose
-    // tip bone. Those are the IK targets. So when a clip moves
-    // the part, the marker moves, and the hand follows for free.
-    // One system animates the prop; IK keeps the hands attached.
+    // Grip_Pin is parented to Pin, and Grip_Nozzle to a hose bone.
+    // Those are the IK targets. So when a clip moves the part, the
+    // marker moves, and the hand follows for free. One system
+    // animates the prop; IK keeps the hands attached.
     //
     // Step breakdown (Office/Classroom — TPASS):
     // 1 = Sound Alarm          <- right hand press (PressAlarmController)
     // 2 = Grab Extinguisher    <- handled by ExtinguisherGrab
-    // 3 = TPASS Twist
-    // 4 = TPASS Pull
-    // 5 = TPASS Aim
-    // 6 = TPASS Squeeze
-    // 7 = TPASS Sweep
+    // 3 = TPASS Twist          <- PinLayer
+    // 4 = TPASS Pull           <- PinLayer
+    // 5 = TPASS Aim            <- HoseLayer
+    // 6 = TPASS Squeeze        <- HoseLayer
+    // 7 = TPASS Sweep          <- HoseLayer
     // 8 = Evacuate (completed by Door, not RegisterCorrectAction)
     // -------------------------------------------------------
 
@@ -83,6 +96,19 @@ public class SimulationManager : MonoBehaviour
 
     [Tooltip("Seconds to wait after Pull before the pin drops to the floor.")]
     [SerializeField] private float pinDropDelay = 0.4f;
+
+    [Header("Animator Layers (masked)")]
+    [Tooltip("Which layer of ExtinguisherAnimator each clip lives on.\n\n" +
+             "  0 = Base Layer (empty, no mask, no states)\n" +
+             "  1 = HoseLayer  (HoseMask - Bone.012 and below)\n" +
+             "  2 = PinLayer   (PinMask  - lever bones and Pin)\n\n" +
+             "These MUST match the order of the layers in the Animator " +
+             "window, counting from the top starting at 0. If nothing " +
+             "animates, the two values below are probably swapped.")]
+    [SerializeField] private int hoseLayerIndex = 1;
+
+    [Tooltip("Layer holding Twist, Pull and PinDrop.")]
+    [SerializeField] private int pinLayerIndex = 2;
 
     [Header("After the Pin Drops")]
     [Tooltip("The Pin object on the extinguisher. It is hidden once the " +
@@ -225,6 +251,9 @@ public class SimulationManager : MonoBehaviour
     // BEFORE the extinguisherAnimator null guard below - otherwise a
     // scene with no Animator assigned would silently swallow the
     // press, with no error and nothing on screen to explain why.
+    //
+    // Each extinguisher clip is played on its MASKED layer, so a pin
+    // clip physically cannot write to hose bones and vice versa.
     // -------------------------------------------------------
     private void PlayClipForStep(SimulationInteractable.SimStep step)
     {
@@ -263,40 +292,44 @@ public class SimulationManager : MonoBehaviour
 
         if (name.Contains("Twist"))
         {
-            PlayClip(clipTwist);
+            PlayClip(clipTwist, pinLayerIndex);
         }
         else if (name.Contains("Pull"))
         {
-            PlayClip(clipPull);
+            PlayClip(clipPull, pinLayerIndex);
             // The pin leaves the hand, falls, then disappears - and the
             // left hand lets go and returns to rest.
             StartCoroutine(PullSequence());
         }
         else if (name.Contains("Aim"))
         {
-            PlayClip(clipAim);
+            PlayClip(clipAim, hoseLayerIndex);
         }
         else if (name.Contains("Squeeze"))
         {
-            PlayClip(clipSqueeze);
+            PlayClip(clipSqueeze, hoseLayerIndex);
         }
         else if (name.Contains("Sweep"))
         {
-            PlayClip(clipSweep);
+            PlayClip(clipSweep, hoseLayerIndex);
         }
         // Evacuate has no animation.
     }
 
-    // Play a state from its first frame. Play() rather than
-    // CrossFade() because the six clips animate different parts,
-    // so there is nothing to blend between - and no exit-time
+    // Play a state from its first frame, on a SPECIFIC layer. Play()
+    // rather than CrossFade() because the six clips animate different
+    // parts, so there is nothing to blend between - and no exit-time
     // transitions exist, so playback stops at the end of the clip.
-    private void PlayClip(string stateName)
+    //
+    // The layer argument matters. Passing 0 would target the empty
+    // Base Layer, which holds no states and no mask, so nothing would
+    // play at all.
+    private void PlayClip(string stateName, int layer)
     {
         if (extinguisherAnimator == null || string.IsNullOrEmpty(stateName)) return;
 
-        extinguisherAnimator.Play(stateName, 0, 0f);
-        Debug.Log($"[SimulationManager] Extinguisher clip: {stateName}");
+        extinguisherAnimator.Play(stateName, layer, 0f);
+        Debug.Log($"[SimulationManager] Extinguisher clip: {stateName} (layer {layer})");
     }
 
     // -------------------------------------------------------
@@ -316,7 +349,7 @@ public class SimulationManager : MonoBehaviour
     {
         // 1 + 2: let the Pull clip carry the pin out, then drop it.
         yield return new WaitForSeconds(pinDropDelay);
-        PlayClip(clipPinDrop);
+        PlayClip(clipPinDrop, pinLayerIndex);
 
         // 3: let the drop finish.
         yield return new WaitForSeconds(pinDropClipLength);
