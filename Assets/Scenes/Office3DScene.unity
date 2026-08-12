@@ -5024,6 +5024,9 @@ MonoBehaviour:
   rightHandGrip: {fileID: 473489021}
   sprayVFX: {fileID: 1341786410}
   fireController: {fileID: 1441508379}
+  relaxDuration: 0.8
+  releaseLeftHandOnFireOut: 1
+  relaxExtinguisherOnFireOut: 1
   currentStep: 1
   simActive: 0
 --- !u!4 &283207642
@@ -5062,7 +5065,7 @@ MonoBehaviour:
   travelDuration: 0.5
   weightBlendSpeed: 4
   fingerGrip: {fileID: 0}
-  enableTestKeys: 1
+  enableTestKeys: 0
   sculptMode: 0
   sculptGrip: 1
 --- !u!114 &283207644
@@ -7311,6 +7314,7 @@ MonoBehaviour:
   sweepCount: 2
   rightHandControlledByIK: 1
   leftHandControlledByIK: 1
+  sweepControlledByAnimation: 1
 --- !u!114 &387023227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15297,12 +15301,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 46ae8f767c522354e8807d5981a6a058, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 926878023}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 46ae8f767c522354e8807d5981a6a058, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 926878022}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 46ae8f767c522354e8807d5981a6a058, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 926878021}
   m_SourcePrefab: {fileID: 100100000, guid: 46ae8f767c522354e8807d5981a6a058, type: 3}
 --- !u!4 &926878019 stripped
@@ -15336,72 +15334,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.67888576, y: 1, z: 1}
   m_Center: {x: 0.16055688, y: -0.0000000020230353, z: 0.000000001323105}
---- !u!114 &926878022
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 926878020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
-  interactDistance: 5
-  hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
-  glowIntensity: 3
-  pulseSpeed: 1.6
-  pulseAmount: 0.2
-  fadeSpeed: 14
---- !u!114 &926878023
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 926878020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe16c5afa4916814b86aab10fcf795de, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HazardDialogue
-  hazardName: Octopus Wiring
-  lines:
-  - text: "That's octopus wiring \u2014 one outlet with too many devices plugged
-      into it."
-    characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
-    demoVideo: {fileID: 0}
-  - text: Every outlet can only carry so much power. Plug in too much, and the wires
-      start to heat up.
-    characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
-    demoVideo: {fileID: 0}
-  - text: 'The heat builds slowly. Insulation melts, and a fire can start inside
-      the wall where nobody notices until it spreads. '
-    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
-    demoVideo: {fileID: 0}
-  - text: "Chaining extension cords together doesn't help \u2014 it just hides the
-      problem. The load is still there, and every extra connection adds more heat"
-    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
-    demoVideo: {fileID: 0}
-  - text: ' Report the unsafe wiring. Never fix it yourself,
-
-      A licensed electrician
-      should handle it. Head to the phone and report this hazard.'
-    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
-    demoVideo: {fileID: 0}
-  completionLines:
-  - text: Good work. Maintenance has been notified, and an electrician will inspect
-      the wiring.
-    characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
-    demoVideo: {fileID: 0}
-  - text: 'Reported and handled. That wiring won''t be a risk now.
-
-'
-    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
-    demoVideo: {fileID: 0}
-  actionTarget: {fileID: 1484616460}
-  isComplete: 0
 --- !u!1001 &927445536
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -28133,6 +28065,7 @@ MonoBehaviour:
   squeezeDuration: 2
   dieDuration: 3
   deactivateAfterDeath: 1
+  hideDelay: 2
 --- !u!1 &1456879480 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4345160361176253108, guid: 8fadeb8f83a725a429389cef90e010dc, type: 3}

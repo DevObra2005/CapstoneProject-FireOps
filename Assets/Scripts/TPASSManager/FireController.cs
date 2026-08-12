@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -18,6 +19,29 @@ using UnityEngine;
 //
 // ANALOGY: think of it like a dimmer switch for the fire, not an
 // on/off switch. Squeeze = dim halfway. Sweep = dim to zero.
+//
+// -------------------------------------------------------
+// NEW IN THIS VERSION - THE onFireOut CALLBACK
+//
+// ExtinguishFire() now accepts an optional callback that fires the
+// moment the flames have finished fading.
+//
+// WHY: the extinguisher spray is what is KILLING the fire. If the
+// spray stops the instant Sweep is tapped, the player watches the
+// fire die with nothing hitting it - which teaches the wrong thing.
+// The discharge has to outlive the flames.
+//
+// WHY A CALLBACK AND NOT A DELAY FIELD ON SimulationManager:
+// The length of the fade is dieDuration, and it lives HERE. If
+// SimulationManager also held a "wait this long before stopping the
+// spray" number, the two would be describing the same duration in
+// two files. The first time either was retuned they would drift
+// apart, and nothing would warn you - the spray would just start
+// cutting off early or hanging late for no visible reason.
+//
+// This is the same pattern as the onArrived callbacks on
+// LeftHandIKController, and for the same reason: one owner per
+// number, everyone else asks to be told when it is done.
 // -------------------------------------------------------
 
 public class FireController : MonoBehaviour
@@ -30,9 +54,14 @@ public class FireController : MonoBehaviour
 
     [Header("Die Settings")]
     // How long the fire takes to fully die on SWEEP (seconds).
+    // This is ALSO how long the spray keeps running after Sweep,
+    // because the onFireOut callback fires at the end of this fade.
     [SerializeField] private float dieDuration = 2f;
     // Should the whole fire object turn off after it dies?
     [SerializeField] private bool deactivateAfterDeath = true;
+    // How long to wait after the flames are out before hiding the
+    // object, so lingering particles can drift away rather than pop.
+    [SerializeField] private float hideDelay = 2f;
 
     // -------------------------------------------------------
     // All the particle systems that make up this fire (found at Start).
@@ -70,18 +99,26 @@ public class FireController : MonoBehaviour
     public void WeakenFire()
     {
         StopAllCoroutines();
-        StartCoroutine(ScaleFireRoutine(squeezeShrinkTo, squeezeDuration, false));
+        StartCoroutine(ScaleFireRoutine(squeezeShrinkTo, squeezeDuration, false, null));
         Debug.Log("[FireController] Fire weakened (squeeze).");
     }
 
     // -------------------------------------------------------
     // PUBLIC: called when the player SWEEPS (step 7).
     // Kills the fire completely.
+    //
+    // onFireOut runs the moment the flames have finished fading -
+    // BEFORE the object is hidden, because hiding is just cleanup.
+    // SimulationManager passes the nozzle spray stop in here, so the
+    // discharge lasts exactly as long as it takes to put the fire out.
+    //
+    // Passing nothing is fine; the parameter is optional and any
+    // existing ExtinguishFire() call still compiles unchanged.
     // -------------------------------------------------------
-    public void ExtinguishFire()
+    public void ExtinguishFire(Action onFireOut = null)
     {
         StopAllCoroutines();
-        StartCoroutine(ScaleFireRoutine(0f, dieDuration, true));
+        StartCoroutine(ScaleFireRoutine(0f, dieDuration, true, onFireOut));
         Debug.Log("[FireController] Fire extinguished (sweep).");
     }
 
@@ -92,7 +129,11 @@ public class FireController : MonoBehaviour
     //   targetFraction 0.5 = half strength (weaken)
     //   targetFraction 0   = fully out (die)
     // -------------------------------------------------------
-    private IEnumerator ScaleFireRoutine(float targetFraction, float duration, bool isDeath)
+    private IEnumerator ScaleFireRoutine(
+        float targetFraction,
+        float duration,
+        bool isDeath,
+        Action onFireOut)
     {
         // Capture where each system is RIGHT NOW (so weaken-then-die
         // continues smoothly from the weakened state).
@@ -141,10 +182,24 @@ public class FireController : MonoBehaviour
             foreach (var ps in allSystems)
                 ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
 
+            // -----------------------------------------------
+            // THE FIRE IS NOW VISUALLY OUT.
+            //
+            // Anything that should end WITH the fire rather than with
+            // the button press happens here. Right now that is the
+            // nozzle spray, passed in by SimulationManager.
+            //
+            // This fires BEFORE the hide delay below, because the hide
+            // is only housekeeping - the flames are already gone by the
+            // time we reach this line, and the player should stop
+            // spraying a fire that is out, not one that is invisible.
+            // -----------------------------------------------
+            onFireOut?.Invoke();
+
             if (deactivateAfterDeath)
             {
                 // Give lingering particles a moment to fade, then hide.
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(hideDelay);
                 gameObject.SetActive(false);
             }
         }
