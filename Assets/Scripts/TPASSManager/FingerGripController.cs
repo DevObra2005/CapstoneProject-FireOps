@@ -12,7 +12,7 @@ using UnityEngine;
 // suit all of them - some bend correctly, others splay
 // sideways or twist. Giving each bone its own axis fixes that.
 //
-// THE THREE LAYERS:
+// THE FOUR LAYERS:
 //
 //   BASE OFFSET  - a permanent rotation added to a bone, always.
 //                  This is how you SHAPE the hand: spread the
@@ -20,25 +20,29 @@ using UnityEngine;
 //                  further than its neighbours. Set these in the
 //                  Inspector OUTSIDE Play mode and they persist.
 //
-//   CURL         - extra rotation on top of the base offset,
-//                  driven by the GRIP amount (0 to 1).
-//                  This is the squeeze around the extinguisher.
+//   CURL         - extra rotation driven by the GRIP amount.
+//                  The squeeze around the extinguisher handle.
 //
-//   POINT        - extra rotation on top, driven by the POINT
-//                  amount (0 to 1). This is the index-finger
-//                  pointing pose used to press the alarm button.
+//   POINT        - extra rotation driven by the POINT amount.
+//                  Index-finger pointing pose for the alarm press.
 //
-// GRIP AND POINT ARE INDEPENDENT DIALS.
-// They share each bone's curlAxis (the same hinge), because a
-// point is not a different direction of bend - it is the same
-// bend applied to every finger EXCEPT the index.
+//   SQUEEZE      - extra rotation driven by the SQUEEZE amount.
+//                  The THUMB pressing the lever down during the
+//                  Squeeze step. Leave this at 0 on every bone
+//                  EXCEPT thumb.01.R and thumb.02.R, so the rest
+//                  of the hand keeps its grip on the handle while
+//                  only the thumb moves.
 //
-// So: leave pointAngle at 0 on the index bones, and give the
-// other fingers a curl. That is the entire pointing pose.
+// ALL THREE POSE DIALS ARE INDEPENDENT.
+// They share each bone's curlAxis (the same hinge), because these
+// are all the same direction of bend applied to different subsets
+// of fingers - not different directions.
 //
-// In practice the two never overlap in time: point rises for the
-// alarm press and returns to 0 before the extinguisher grab
-// begins, so they never fight each other.
+// In practice grip and point never overlap in time: point rises
+// for the alarm press and returns to 0 before the grab. Grip and
+// squeeze DO overlap deliberately - the hand is gripping the
+// handle while the thumb presses, which is exactly how you hold
+// a real extinguisher.
 // -------------------------------------------------------
 
 public class FingerGripController : MonoBehaviour
@@ -57,10 +61,9 @@ public class FingerGripController : MonoBehaviour
                  "Set it outside Play mode - it saves.")]
         public Vector3 baseOffset = Vector3.zero;
 
-        [Header("Curl Axis (shared by grip and point)")]
+        [Header("Curl Axis (shared by all three pose dials)")]
         [Tooltip("Which LOCAL axis THIS bone rotates around. " +
-                 "Different bones often need different axes. " +
-                 "Both the grip curl and the point pose use this axis.")]
+                 "Different bones often need different axes.")]
         public CurlAxis curlAxis = CurlAxis.X;
 
         [Header("Grip Pose (driven by grip amount)")]
@@ -74,11 +77,19 @@ public class FingerGripController : MonoBehaviour
                  "straight. Give the other fingers a curl to fold them " +
                  "into the palm.")]
         public float pointAngle = 0f;
+
+        [Header("Squeeze Pose (driven by squeeze amount)")]
+        [Tooltip("How many degrees this bone bends when the thumb presses " +
+                 "the lever. LEAVE AT 0 on every bone EXCEPT the thumb - " +
+                 "the rest of the hand must keep gripping the handle. " +
+                 "Try 20-40 on thumb.01.R and thumb.02.R, then adjust by eye " +
+                 "so the thumb tip travels with the lever.")]
+        public float squeezeAngle = 0f;
     }
 
     [Header("Finger Bones")]
     [Tooltip("One entry per bone. Each has its own shape offset, " +
-             "rotation axis, grip angle, and point angle.")]
+             "rotation axis, and three pose angles.")]
     [SerializeField] private FingerBone[] fingerBones;
 
     [Header("Blending")]
@@ -88,6 +99,11 @@ public class FingerGripController : MonoBehaviour
     [Tooltip("How fast the point pose blends in and out. " +
              "A press should feel quicker than a grip.")]
     [SerializeField] private float pointSpeed = 10f;
+
+    [Tooltip("How fast the thumb press blends in and out. Match this " +
+             "roughly to the Squeeze clip so the thumb and lever move " +
+             "together rather than one lagging behind the other.")]
+    [SerializeField] private float squeezeSpeed = 6f;
 
     [Header("Resting Grip")]
     [Tooltip("Grip level when not actively squeezing. " +
@@ -100,8 +116,8 @@ public class FingerGripController : MonoBehaviour
 
     [Header("Live Preview")]
     [Tooltip("Tick to see the pose in the Scene view WITHOUT " +
-             "entering Play mode. Useful while dialling in baseOffset " +
-             "and pointAngle. Untick when done.")]
+             "entering Play mode. Useful while dialling in baseOffset, " +
+             "pointAngle and squeezeAngle. Untick when done.")]
     [SerializeField] private bool previewInEditor = false;
 
     [Tooltip("Grip amount used by the editor preview.")]
@@ -112,6 +128,12 @@ public class FingerGripController : MonoBehaviour
              "Set this to 1 while sculpting the pointing pose.")]
     [Range(0f, 1f)]
     [SerializeField] private float previewPoint = 0f;
+
+    [Tooltip("Squeeze amount used by the editor preview. " +
+             "Set previewGrip to 0.8 AND previewSqueeze to 1 while dialling " +
+             "in the thumb - that is what the hand actually looks like mid-press.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float previewSqueeze = 0f;
 
     // Each bone's untouched rest pose, memorised once.
     private Quaternion[] restRotations;
@@ -124,6 +146,10 @@ public class FingerGripController : MonoBehaviour
     private float point = 0f;
     private float pointTarget = 0f;
 
+    // 0 = thumb up, 1 = thumb pressed down on the lever.
+    private float squeeze = 0f;
+    private float squeezeTarget = 0f;
+
     private void Start()
     {
         CacheRestPose();
@@ -132,6 +158,9 @@ public class FingerGripController : MonoBehaviour
 
         pointTarget = 0f;
         point = 0f;
+
+        squeezeTarget = 0f;
+        squeeze = 0f;
     }
 
     private void CacheRestPose()
@@ -152,14 +181,15 @@ public class FingerGripController : MonoBehaviour
 
         grip = Mathf.MoveTowards(grip, gripTarget, curlSpeed * Time.deltaTime);
         point = Mathf.MoveTowards(point, pointTarget, pointSpeed * Time.deltaTime);
+        squeeze = Mathf.MoveTowards(squeeze, squeezeTarget, squeezeSpeed * Time.deltaTime);
 
-        ApplyPose(grip, point);
+        ApplyPose(grip, point, squeeze);
     }
 
     // -------------------------------------------------------
-    // Applies base offset + grip curl + point curl to every bone.
+    // Applies base offset + all three pose dials to every bone.
     // -------------------------------------------------------
-    private void ApplyPose(float gripAmount, float pointAmount)
+    private void ApplyPose(float gripAmount, float pointAmount, float squeezeAmount)
     {
         for (int i = 0; i < fingerBones.Length; i++)
         {
@@ -177,11 +207,14 @@ public class FingerGripController : MonoBehaviour
                 fb.curlAxis == CurlAxis.X ? Vector3.right :
                 fb.curlAxis == CurlAxis.Y ? Vector3.up : Vector3.forward;
 
-            // 4. Add the grip curl (the squeeze).
+            // 4. Grip curl - the hold on the handle.
             result *= Quaternion.AngleAxis(fb.curlAngle * gripAmount, axisVector);
 
-            // 5. Add the point pose on top (folds fingers for the press).
+            // 5. Point pose - index out, for the alarm press.
             result *= Quaternion.AngleAxis(fb.pointAngle * pointAmount, axisVector);
+
+            // 6. Squeeze pose - thumb down on the lever.
+            result *= Quaternion.AngleAxis(fb.squeezeAngle * squeezeAmount, axisVector);
 
             fb.bone.localRotation = result;
         }
@@ -200,7 +233,7 @@ public class FingerGripController : MonoBehaviour
         if (restRotations == null || restRotations.Length != fingerBones.Length)
             CacheRestPose();
 
-        ApplyPose(previewGrip, previewPoint);
+        ApplyPose(previewGrip, previewPoint, previewSqueeze);
     }
 #endif
 
@@ -229,7 +262,7 @@ public class FingerGripController : MonoBehaviour
 
     // -------------------------------------------------------
     // PUBLIC API - POINT
-    // (new - PressAlarmController.cs calls these)
+    // (PressAlarmController.cs calls these)
     // -------------------------------------------------------
 
     /// <summary>true = index-out pointing pose. false = neutral.</summary>
@@ -244,7 +277,24 @@ public class FingerGripController : MonoBehaviour
         pointTarget = Mathf.Clamp01(amount);
     }
 
-    /// <summary>Snap both dials back to their starting values.
+    // -------------------------------------------------------
+    // PUBLIC API - SQUEEZE (thumb on the lever)
+    // (SimulationManager.cs calls these on the Squeeze step)
+    // -------------------------------------------------------
+
+    /// <summary>true = thumb pressed down on the lever. false = thumb up.</summary>
+    public void SetSqueeze(bool pressed)
+    {
+        squeezeTarget = pressed ? 1f : 0f;
+    }
+
+    /// <summary>Blend to any squeeze level between 0 and 1.</summary>
+    public void SetSqueezeAmount(float amount)
+    {
+        squeezeTarget = Mathf.Clamp01(amount);
+    }
+
+    /// <summary>Snap all three dials back to their starting values.
     /// Called when a simulation run is reset.</summary>
     public void ResetPose()
     {
@@ -253,5 +303,8 @@ public class FingerGripController : MonoBehaviour
 
         pointTarget = 0f;
         point = 0f;
+
+        squeezeTarget = 0f;
+        squeeze = 0f;
     }
 }

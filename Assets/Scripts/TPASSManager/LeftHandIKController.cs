@@ -3,12 +3,26 @@ using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
 /// <summary>
-/// v16 — Controls the LEFT hand via Animation Rigging (Two Bone IK).
+/// v17 — Controls the LEFT hand via Animation Rigging (Two Bone IK).
 ///
-/// CLEANED: the v14 legacy path is gone. Twist, Pull and PinDrop are all
-/// proven working in clip-driven mode, so the sculpted-keyframe fallback
-/// and its fields were dead weight that still had to be read and reasoned
-/// about every time this file was opened.
+/// NEW IN v17 — ARRIVAL CALLBACKS:
+/// The reach routines now accept an optional onArrived callback that fires
+/// the moment the hand actually reaches its grip marker.
+///
+/// WHY THAT MATTERS:
+/// Tapping Twist used to start the pin turning INSTANTLY while the hand was
+/// still travelling toward it, so the pin twisted in empty air. The obvious
+/// fix — a delay field in SimulationManager — would have duplicated
+/// moveDuration in a second file. Two numbers meaning the same thing drift
+/// apart the first time one is retuned, and nothing warns you.
+///
+/// A callback has nothing to keep in sync. The hand finishes moving, says
+/// so, and SimulationManager decides what happens next. Retune moveDuration
+/// freely; the timing stays correct by construction.
+///
+/// Note the callback does NOT play the clip itself. This script never
+/// touches the Animator — it only reports arrival. SimulationManager still
+/// owns all clip playback, exactly as before.
 ///
 /// HOW IT WORKS — THE WHOLE IDEA IN ONE PARAGRAPH:
 /// The hand does not produce the motion. The six baked Blender clips on
@@ -17,19 +31,20 @@ using UnityEngine.Animations.Rigging;
 /// parts:
 ///
 ///     Grip_Pin     -> child of Pin
-///     Grip_Nozzle  -> child of the hose bone
+///     Grip_Nozzle  -> child of a hose bone
 ///
 /// So the hand only has to HOLD ON. Because the marker is welded to the
 /// animated part, the clip carries the hand along for free — one sculpt,
 /// correct in every frame of every clip.
 ///
 /// THE SEQUENCE:
-///   Twist -> hand reaches Grip_Pin and stays. The clip does the twisting.
+///   Twist -> hand reaches Grip_Pin, THEN the clip twists it.
 ///   Pull  -> hand does nothing. The clip pulls the pin, the hand follows.
-///   Aim   -> hand travels from Grip_Pin across to Grip_Nozzle.
+///   Aim   -> hand travels from Grip_Pin across to Grip_Nozzle, THEN aims.
 ///
 /// Everything public that TPASSButtonManager and SimulationManager call is
-/// unchanged:
+/// unchanged — the callback is an OPTIONAL extra argument, so existing
+/// call sites compile untouched:
 ///   ReachPinAndTwist()  PullPin()  GrabNozzle()  ReleaseAll()
 ///
 /// TEST KEYS (editor only, GAME tab):
@@ -41,7 +56,10 @@ public class LeftHandIKController : MonoBehaviour
     [Tooltip("The Two Bone IK Constraint on the LeftArmIK object.")]
     public TwoBoneIKConstraint leftArmIK;
 
-    [Tooltip("The IK_Target transform that the constraint follows.")]
+    [Tooltip("The IK_Target transform that the constraint follows. This must " +
+             "be LeftHandTarget - NOT a grip marker. A constraint can only " +
+             "follow one object, so if it pointed straight at Grip_Pin the " +
+             "hand could never reach the nozzle.")]
     public Transform ikTarget;
 
     // ─────────────────────────────────────────────────────────────
@@ -62,7 +80,9 @@ public class LeftHandIKController : MonoBehaviour
 
     // ─────────────────────────────────────────────────────────────
     [Header("Movement Settings")]
-    [Tooltip("Seconds for the hand to reach out to a grip marker.")]
+    [Tooltip("Seconds for the hand to reach out to a grip marker. The Twist " +
+             "clip waits for this to finish, so raising it delays the pin " +
+             "turning too - nothing to keep in sync by hand.")]
     public float moveDuration = 0.35f;
 
     [Tooltip("Seconds for the hand to travel from the pin across to the nozzle.")]
@@ -95,6 +115,10 @@ public class LeftHandIKController : MonoBehaviour
     // Local position and rotation are what get saved, so the bone snapping
     // back to rest afterwards does not matter — the offset is what rides
     // the animation.
+    //
+    // NOTE: the 90-second timer will end the run and release the hand while
+    // you sculpt. Raise Total Time on SimulationManager first, and put it
+    // back to 90 when you are done.
     // =========================================================
     public enum SculptGrip { Pin, Nozzle }
 
@@ -135,6 +159,16 @@ public class LeftHandIKController : MonoBehaviour
             leftArmIK.weight = 0f;              // FK owns the arm until Twist
 
         currentGrip = null;
+
+        // Park the target at rest so the first reach starts from a sensible
+        // place. Without this it sits at LeftHandTarget's authored position,
+        // and if that is near the rig origin the hand visibly dives to the
+        // floor before swinging up to the pin.
+        if (ikTarget != null && restTarget != null)
+        {
+            ikTarget.position = restTarget.position;
+            ikTarget.rotation = restTarget.rotation;
+        }
     }
 
     void Update()
@@ -237,18 +271,45 @@ public class LeftHandIKController : MonoBehaviour
 
     // ─────────────────────────────────────────────────────────────
     //  PUBLIC API — called by TPASSButtonManager and SimulationManager
+    //
+    //  onArrived is OPTIONAL. Existing calls with no argument still
+    //  compile and behave exactly as before.
     // ─────────────────────────────────────────────────────────────
 
-    public void ReachPinAndTwist() { StartExclusive(ReachAndTwistRoutine()); }
-    public void PullPin() { StartExclusive(PullRoutine()); }
-    public void GrabNozzle() { StartExclusive(GrabNozzleRoutine()); }
-    public void ReleaseAll() { StartExclusive(ReturnToRestRoutine()); }
+    /// <summary>
+    /// Reaches the hand out to Grip_Pin. onArrived fires once the hand is
+    /// actually holding the pin — play the Twist clip from there so the pin
+    /// does not turn in mid-air while the hand is still travelling.
+    /// </summary>
+    public void ReachPinAndTwist(System.Action onArrived = null)
+    {
+        StartExclusive(ReachAndTwistRoutine(onArrived));
+    }
+
+    public void PullPin(System.Action onArrived = null)
+    {
+        StartExclusive(PullRoutine(onArrived));
+    }
+
+    /// <summary>
+    /// Travels the hand from wherever it is across to Grip_Nozzle.
+    /// onArrived fires once it is holding the nozzle.
+    /// </summary>
+    public void GrabNozzle(System.Action onArrived = null)
+    {
+        StartExclusive(GrabNozzleRoutine(onArrived));
+    }
+
+    public void ReleaseAll(System.Action onArrived = null)
+    {
+        StartExclusive(ReturnToRestRoutine(onArrived));
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  ROUTINES
     // ─────────────────────────────────────────────────────────────
 
-    private IEnumerator ReachAndTwistRoutine()
+    private IEnumerator ReachAndTwistRoutine(System.Action onArrived)
     {
         targetWeight = 1f;
 
@@ -258,6 +319,9 @@ public class LeftHandIKController : MonoBehaviour
         if (gripPin == null)
         {
             Debug.LogWarning("[LeftHandIK] Grip Pin is not assigned.");
+            // Still fire the callback so the caller is not left waiting
+            // forever on a step that can never complete.
+            onArrived?.Invoke();
             yield break;
         }
 
@@ -268,20 +332,24 @@ public class LeftHandIKController : MonoBehaviour
         currentGrip = gripPin;
 
         if (fingerGrip != null) fingerGrip.SetGrip(true);
+
+        // The hand is now ON the pin. Safe to start twisting it.
+        onArrived?.Invoke();
     }
 
-    private IEnumerator PullRoutine()
+    private IEnumerator PullRoutine(System.Action onArrived)
     {
         targetWeight = 1f;
 
         // Nothing for the hand to do. Grip_Pin is parented to Pin, and the
         // Pull clip moves Pin — so LateUpdate carries the hand out with it
-        // automatically. This routine exists only so the call from
-        // TPASSButtonManager still resolves.
+        // automatically. The hand is already in place, so the callback can
+        // fire immediately.
+        onArrived?.Invoke();
         yield break;
     }
 
-    private IEnumerator GrabNozzleRoutine()
+    private IEnumerator GrabNozzleRoutine(System.Action onArrived)
     {
         targetWeight = 1f;
 
@@ -290,6 +358,7 @@ public class LeftHandIKController : MonoBehaviour
         if (gripNozzle == null)
         {
             Debug.LogWarning("[LeftHandIK] Grip Nozzle is not assigned.");
+            onArrived?.Invoke();
             yield break;
         }
 
@@ -322,9 +391,12 @@ public class LeftHandIKController : MonoBehaviour
 
         isTransitioning = false;
         currentGrip = gripNozzle;
+
+        // The hand is now ON the nozzle. Safe to start the hose clip.
+        onArrived?.Invoke();
     }
 
-    private IEnumerator ReturnToRestRoutine()
+    private IEnumerator ReturnToRestRoutine(System.Action onArrived)
     {
         // Stop tracking any grip so LateUpdate lets go.
         currentGrip = null;
@@ -337,6 +409,8 @@ public class LeftHandIKController : MonoBehaviour
         targetWeight = 0f;
 
         if (fingerGrip != null) fingerGrip.SetGrip(false);
+
+        onArrived?.Invoke();
     }
 
     // ─────────────────────────────────────────────────────────────

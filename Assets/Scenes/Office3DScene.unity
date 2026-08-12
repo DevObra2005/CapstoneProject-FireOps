@@ -5341,9 +5341,12 @@ MonoBehaviour:
   pinDropDelay: 0.4
   hoseLayerIndex: 1
   pinLayerIndex: 2
+  leverLayerIndex: 3
+  hoseBlendDuration: 0.25
   pinObject: {fileID: 1341786403}
   leftHandIK: {fileID: 283207643}
   pinDropClipLength: 0.5
+  rightHandGrip: {fileID: 473489021}
   currentStep: 1
   simActive: 0
 --- !u!4 &283207642
@@ -8958,48 +8961,58 @@ MonoBehaviour:
     curlAxis: 0
     curlAngle: 4.8
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 436609144}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: -14.7
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 337014311}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: -5
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 1999815600}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: -10
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2116269029}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: -3.68
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 1703522731}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 1
     curlAngle: 41.5
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 1179369281}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 0.54
     pointAngle: 0
+    squeezeAngle: 18
   - bone: {fileID: 1412094629}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: 58.6
     pointAngle: 0
+    squeezeAngle: 0
   curlSpeed: 8
   pointSpeed: 10
+  squeezeSpeed: 6
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
   previewPoint: 0
+  previewSqueeze: 0
 --- !u!1001 &477885195
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -44240,11 +44253,13 @@ MonoBehaviour:
   fingerBones: []
   curlSpeed: 8
   pointSpeed: 10
+  squeezeSpeed: 6
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
   previewPoint: 0
+  previewSqueeze: 0
 --- !u!4 &4830720616545680921
 Transform:
   m_ObjectHideFlags: 0
@@ -46101,48 +46116,58 @@ MonoBehaviour:
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 0}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 50
     pointAngle: 0
+    squeezeAngle: 0
   curlSpeed: 8
   pointSpeed: 10
+  squeezeSpeed: 6
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
   previewPoint: 0
+  previewSqueeze: 0
 --- !u!1001 &8186254138670169015
 PrefabInstance:
   m_ObjectHideFlags: 0

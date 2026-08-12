@@ -24,18 +24,31 @@ public class SimulationManager : MonoBehaviour
     // not an extinguisher clip, so it is dispatched separately -
     // see the note inside PlayClipForStep.
     //
-    // NEW IN THIS VERSION - MASKED ANIMATOR LAYERS:
+    // MASKED ANIMATOR LAYERS:
     // The six clips are frame ranges carved out of ONE long Blender
     // timeline (Squeeze 1-23, Aim 24-66, Sweep 66-115, Twist 130-152,
     // Pull 152-165, PinDrop 165-180). Jumping straight to Twist's
     // range also snapped the HOSE to whatever pose was baked at that
     // frame - the hose appeared to teleport rather than animate.
     //
-    // The fix is two masked layers on the Animator. PinLayer can only
-    // write to the lever bones and Pin; HoseLayer can only write to
-    // Bone.012 and below. A pin clip therefore CANNOT move the hose,
-    // no matter what its frames contain. See the layer index fields
-    // below.
+    // The fix is three masked layers. HoseLayer can only write to
+    // Bone.012 and below. PinLayer can only write to Pin. LeverLayer
+    // can only write to the two lever chains. A clip therefore CANNOT
+    // disturb a part it has no business touching, no matter what its
+    // frames contain.
+    //
+    // NEW IN THIS VERSION - SQUEEZE IS LEVER-ONLY:
+    // Squeeze used to play on the hose layer as well, and the hose
+    // dropped every time. Squeeze sits at frames 1-23, BEFORE Aim at
+    // 24-66, so playing it on the hose layer jumps the hose back to a
+    // pre-aim pose. CrossFade only smoothed the trip - the destination
+    // was still wrong.
+    //
+    // The real answer is that the hose SHOULD NOT MOVE during Squeeze.
+    // You do not re-aim while discharging. HoseLayer already holds the
+    // last Aim pose perfectly well on its own; playing Squeeze there
+    // was actively destroying it. So Squeeze now plays on LeverLayer
+    // alone, and the hose simply stays where Aim left it.
     //
     // WHY IT LIVES HERE:
     // RegisterCorrectAction already fires exactly once per
@@ -52,10 +65,10 @@ public class SimulationManager : MonoBehaviour
     // Step breakdown (Office/Classroom — TPASS):
     // 1 = Sound Alarm          <- right hand press (PressAlarmController)
     // 2 = Grab Extinguisher    <- handled by ExtinguisherGrab
-    // 3 = TPASS Twist          <- PinLayer
+    // 3 = TPASS Twist          <- PinLayer,  after the hand arrives
     // 4 = TPASS Pull           <- PinLayer
-    // 5 = TPASS Aim            <- HoseLayer
-    // 6 = TPASS Squeeze        <- HoseLayer
+    // 5 = TPASS Aim            <- HoseLayer, after the hand arrives
+    // 6 = TPASS Squeeze        <- LeverLayer only
     // 7 = TPASS Sweep          <- HoseLayer
     // 8 = Evacuate (completed by Door, not RegisterCorrectAction)
     // -------------------------------------------------------
@@ -99,16 +112,31 @@ public class SimulationManager : MonoBehaviour
 
     [Header("Animator Layers (masked)")]
     [Tooltip("Which layer of ExtinguisherAnimator each clip lives on.\n\n" +
-             "  0 = Base Layer (empty, no mask, no states)\n" +
-             "  1 = HoseLayer  (HoseMask - Bone.012 and below)\n" +
-             "  2 = PinLayer   (PinMask  - lever bones and Pin)\n\n" +
+             "  0 = Base Layer  (empty, no mask, no states)\n" +
+             "  1 = HoseLayer   (HoseMask  - Bone.012 and below)\n" +
+             "  2 = PinLayer    (PinMask   - Pin only)\n" +
+             "  3 = LeverLayer  (LeverMask - Bone and Bone.006 chains)\n\n" +
              "These MUST match the order of the layers in the Animator " +
              "window, counting from the top starting at 0. If nothing " +
-             "animates, the two values below are probably swapped.")]
+             "animates, these values are probably out of order.")]
     [SerializeField] private int hoseLayerIndex = 1;
 
     [Tooltip("Layer holding Twist, Pull and PinDrop.")]
     [SerializeField] private int pinLayerIndex = 2;
+
+    [Tooltip("Layer holding Squeeze. LeverMask covers only the two lever " +
+             "chains, so this clip moves the lever the thumb presses and " +
+             "nothing else - the hose keeps whatever pose Aim left it in.")]
+    [SerializeField] private int leverLayerIndex = 3;
+
+    [Tooltip("Seconds to blend when switching between HOSE clips.\n\n" +
+             "Aim and Sweep sit next to each other on the shared timeline " +
+             "(Aim 24-66, Sweep 66-115), so a cut between them already lands " +
+             "on a sensible pose. The blend just softens the change.\n\n" +
+             "Set to 0 for an instant cut. Pin and lever clips deliberately " +
+             "do NOT use this - they are crisp and correct already, and " +
+             "blending would only soften them.")]
+    [SerializeField] private float hoseBlendDuration = 0.25f;
 
     [Header("After the Pin Drops")]
     [Tooltip("The Pin object on the extinguisher. It is hidden once the " +
@@ -116,14 +144,26 @@ public class SimulationManager : MonoBehaviour
              "it should not stay floating in the scene.")]
     [SerializeField] private GameObject pinObject;
 
-    [Tooltip("The LeftHandIKController. Its ReleaseAll() is called when " +
-             "PinDrop finishes, so the left hand lets go and returns to rest " +
-             "instead of hanging in mid-air where the pin used to be.")]
+    [Tooltip("The LeftHandIKController. Drives the reach-then-play timing " +
+             "for Twist and Aim, and its ReleaseAll() is called when PinDrop " +
+             "finishes so the left hand lets go instead of hanging in mid-air " +
+             "where the pin used to be.")]
     [SerializeField] private LeftHandIKController leftHandIK;
 
     [Tooltip("How long the PinDrop clip runs. The pin is hidden and the hand " +
              "released after this. Check the clip length in the Inspector.")]
     [SerializeField] private float pinDropClipLength = 0.5f;
+
+    [Header("Thumb Press")]
+    [Tooltip("The FingerGripController on hand.R. Its SetSqueeze(true) is " +
+             "called on the Squeeze step so the THUMB presses the lever down " +
+             "while the rest of the hand keeps gripping the handle.\n\n" +
+             "The lever motion itself comes from the Squeeze clip on " +
+             "LeverLayer - this is only the thumb. Both start together, so " +
+             "tune squeezeSpeed on the FingerGripController until the thumb " +
+             "tip travels with the lever rather than lagging or leading it.\n\n" +
+             "Leave empty to skip the thumb entirely; the lever still moves.")]
+    [SerializeField] private FingerGripController rightHandGrip;
     // -------------------------------------------------------
 
     // --- RUNTIME STATE ---
@@ -171,6 +211,9 @@ public class SimulationManager : MonoBehaviour
         // was abandoned mid-press. Without this the hand could still be
         // held out at the button when the next run starts.
         if (pressAlarm != null) pressAlarm.ResetState();
+
+        // Lift the thumb off the lever, in case a run ended mid-squeeze.
+        if (rightHandGrip != null) rightHandGrip.SetSqueeze(false);
 
         timeRemaining = totalTime;
         currentStep = 1;
@@ -252,8 +295,8 @@ public class SimulationManager : MonoBehaviour
     // scene with no Animator assigned would silently swallow the
     // press, with no error and nothing on screen to explain why.
     //
-    // Each extinguisher clip is played on its MASKED layer, so a pin
-    // clip physically cannot write to hose bones and vice versa.
+    // Each extinguisher clip is played on its MASKED layer, so a clip
+    // physically cannot write to bones outside its own part.
     // -------------------------------------------------------
     private void PlayClipForStep(SimulationInteractable.SimStep step)
     {
@@ -292,7 +335,19 @@ public class SimulationManager : MonoBehaviour
 
         if (name.Contains("Twist"))
         {
-            PlayClip(clipTwist, pinLayerIndex);
+            // WAIT FOR THE HAND. Playing the clip straight away twisted the
+            // pin while the hand was still travelling toward it - the pin
+            // turning in mid-air with nothing touching it.
+            //
+            // The callback fires the moment the hand is actually holding
+            // Grip_Pin, so the twist starts on contact. Deliberately NOT a
+            // delay field here: that would duplicate moveDuration in a second
+            // file, and the two would drift apart the first time one was
+            // retuned, with nothing to warn you.
+            if (leftHandIK != null)
+                leftHandIK.ReachPinAndTwist(() => PlayClip(clipTwist, pinLayerIndex));
+            else
+                PlayClip(clipTwist, pinLayerIndex);
         }
         else if (name.Contains("Pull"))
         {
@@ -303,23 +358,44 @@ public class SimulationManager : MonoBehaviour
         }
         else if (name.Contains("Aim"))
         {
-            PlayClip(clipAim, hoseLayerIndex);
+            // Same reasoning as Twist: let the hand arrive at the nozzle
+            // before the hose starts bending.
+            if (leftHandIK != null)
+                leftHandIK.GrabNozzle(() => PlayHoseClip(clipAim));
+            else
+                PlayHoseClip(clipAim);
         }
         else if (name.Contains("Squeeze"))
         {
-            PlayClip(clipSqueeze, hoseLayerIndex);
+            // LEVER ONLY - deliberately not played on the hose layer.
+            //
+            // Squeeze sits at frames 1-23, before Aim at 24-66. Playing it
+            // on HoseLayer jumped the hose back to its pre-aim pose, which
+            // read as the hose dropping the moment you squeezed. CrossFade
+            // smoothed the trip but the destination was still wrong.
+            //
+            // The hose should not move during Squeeze anyway - you do not
+            // re-aim while discharging. Leaving HoseLayer alone means it
+            // simply holds whatever pose Aim finished on, which is correct.
+            PlayClip(clipSqueeze, leverLayerIndex);
+
+            // THUMB: press down with the lever. Only the thumb bones carry a
+            // squeezeAngle, so the rest of the hand keeps its grip on the
+            // handle - which is how you actually hold an extinguisher.
+            if (rightHandGrip != null)
+                rightHandGrip.SetSqueeze(true);
         }
         else if (name.Contains("Sweep"))
         {
-            PlayClip(clipSweep, hoseLayerIndex);
+            PlayHoseClip(clipSweep);
         }
         // Evacuate has no animation.
     }
 
     // Play a state from its first frame, on a SPECIFIC layer. Play()
-    // rather than CrossFade() because the six clips animate different
-    // parts, so there is nothing to blend between - and no exit-time
-    // transitions exist, so playback stops at the end of the clip.
+    // rather than CrossFade() because the clips animate different parts,
+    // so there is nothing to blend between - and no exit-time transitions
+    // exist, so playback stops at the end of the clip.
     //
     // The layer argument matters. Passing 0 would target the empty
     // Base Layer, which holds no states and no mask, so nothing would
@@ -330,6 +406,25 @@ public class SimulationManager : MonoBehaviour
 
         extinguisherAnimator.Play(stateName, layer, 0f);
         Debug.Log($"[SimulationManager] Extinguisher clip: {stateName} (layer {layer})");
+    }
+
+    // Play a HOSE clip with a short blend rather than an instant cut, so
+    // the change between Aim and Sweep reads as a movement rather than a
+    // jump. Falls back to a plain cut when hoseBlendDuration is 0, which
+    // is useful for comparing the two.
+    private void PlayHoseClip(string stateName)
+    {
+        if (extinguisherAnimator == null || string.IsNullOrEmpty(stateName)) return;
+
+        if (hoseBlendDuration <= 0f)
+        {
+            PlayClip(stateName, hoseLayerIndex);
+            return;
+        }
+
+        extinguisherAnimator.CrossFade(stateName, hoseBlendDuration, hoseLayerIndex, 0f);
+        Debug.Log($"[SimulationManager] Extinguisher clip: {stateName} " +
+                  $"(layer {hoseLayerIndex}, blended {hoseBlendDuration}s)");
     }
 
     // -------------------------------------------------------
