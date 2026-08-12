@@ -164,6 +164,26 @@ public class SimulationManager : MonoBehaviour
              "tip travels with the lever rather than lagging or leading it.\n\n" +
              "Leave empty to skip the thumb entirely; the lever still moves.")]
     [SerializeField] private FingerGripController rightHandGrip;
+
+    [Header("Nozzle Spray")]
+    [Tooltip("The ExtinguisherSprayVFX on the extinguisher. Its Play() is " +
+             "called on Squeeze and Stop() on Sweep, so the discharge runs " +
+             "for exactly as long as the player is putting the fire out.\n\n" +
+             "The particle system itself is parented to the hose tip bone, so " +
+             "it follows the nozzle through Aim and Sweep with no code - same " +
+             "trick as the grip markers.\n\n" +
+             "Stop() lets particles already in the air finish their lifetime " +
+             "rather than vanishing mid-flight, which is why the spray tails " +
+             "off instead of cutting out.")]
+    [SerializeField] private ExtinguisherSprayVFX sprayVFX;
+
+    [Header("Fire Reaction")]
+    [Tooltip("The FireController on the fire object. WeakenFire() is called " +
+             "on Squeeze and ExtinguishFire() on Sweep, so the fire shrinks " +
+             "partway then dies - it does not just switch off.\n\n" +
+             "These calls used to live in TPASSButtonManager as well, which " +
+             "meant they fired twice per tap. One owner now.")]
+    [SerializeField] private FireController fireController;
     // -------------------------------------------------------
 
     // --- RUNTIME STATE ---
@@ -214,6 +234,9 @@ public class SimulationManager : MonoBehaviour
 
         // Lift the thumb off the lever, in case a run ended mid-squeeze.
         if (rightHandGrip != null) rightHandGrip.SetSqueeze(false);
+
+        // Kill any spray still running, in case a run ended mid-discharge.
+        if (sprayVFX != null) sprayVFX.Stop();
 
         timeRemaining = totalTime;
         currentStep = 1;
@@ -384,10 +407,41 @@ public class SimulationManager : MonoBehaviour
             // handle - which is how you actually hold an extinguisher.
             if (rightHandGrip != null)
                 rightHandGrip.SetSqueeze(true);
+
+            // SPRAY: the discharge starts here and keeps running until
+            // Sweep stops it, so it lasts exactly as long as the player is
+            // putting the fire out rather than for a fixed timer.
+            if (sprayVFX != null)
+            {
+                sprayVFX.Play();
+                Debug.Log("[SimulationManager] Nozzle spray started.");
+            }
+
+            // FIRE: shrinks partway. It does not go out until Sweep, which
+            // is the teaching point - one burst is not enough.
+            if (fireController != null)
+                fireController.WeakenFire();
         }
         else if (name.Contains("Sweep"))
         {
             PlayHoseClip(clipSweep);
+
+            // The fire is out, so the discharge ends. Stop() lets particles
+            // already in the air finish their lifetime instead of vanishing
+            // mid-flight, which is why the spray tails off naturally.
+            if (sprayVFX != null)
+            {
+                sprayVFX.Stop();
+                Debug.Log("[SimulationManager] Nozzle spray stopped.");
+            }
+
+            // Thumb comes off the lever - nothing left to discharge.
+            if (rightHandGrip != null)
+                rightHandGrip.SetSqueeze(false);
+
+            // FIRE: dies completely and fades out.
+            if (fireController != null)
+                fireController.ExtinguishFire();
         }
         // Evacuate has no animation.
     }

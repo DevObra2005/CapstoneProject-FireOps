@@ -3,14 +3,28 @@
 // WHAT THIS DOES:
 // Runs the "Feedback B" running action log (top-left, below the
 // ring timer). Newest entry on top, max 3 visible, each fades out
-// after a few seconds. Handles BOTH correct and wrong actions.
+// after a few seconds. Handles correct actions, wrong actions,
+// and positioning hints.
 //
-// The TITLE text now carries the correct/wrong meaning
-// ("CORRECT" / "WRONG ACTION") + color, so there is no icon.
+// The TITLE text carries the meaning ("CORRECT" / "WRONG ACTION" /
+// "REPOSITION") plus a colour, so there is no icon.
+//
+// WHY THERE ARE THREE KINDS, NOT TWO:
+// Green and red teach the player a contract - green means right,
+// red means you lost time. A positioning block breaks that: the
+// ACTION was correct, only the player's position was wrong, and
+// no time was taken. Showing that in red would tell them they were
+// penalised when they were not, and they would second-guess a
+// decision that was actually right.
+//
+// Amber says the true thing instead: right idea, wrong conditions,
+// try again. That is also how real fire training works - you are
+// not marked down for standing badly, you are corrected.
 //
 // Other scripts call:
 //    ActionFeedbackManager.Instance.ShowCorrect("Sound the Alarm");
 //    ActionFeedbackManager.Instance.ShowWrong("Aim at the base, not the flames", 20);
+//    ActionFeedbackManager.Instance.ShowHint("Move closer to the fire");
 // -------------------------------------------------------
 using System.Collections;
 using System.Collections.Generic;
@@ -35,6 +49,17 @@ public class ActionFeedbackManager : MonoBehaviour
     [SerializeField] private Color correctColor = new Color(0.18f, 0.80f, 0.44f); // green
     [SerializeField] private Color wrongColor = new Color(0.91f, 0.30f, 0.24f); // red
 
+    [Tooltip("Used for positioning hints - the action was right, only the " +
+             "player's position was wrong, and NO time was lost. Amber " +
+             "rather than red so the player does not think they were " +
+             "penalised.")]
+    [SerializeField] private Color hintColor = new Color(0.95f, 0.68f, 0.18f); // amber
+
+    [Header("Row Titles")]
+    [Tooltip("Title shown on positioning hint rows. Keep it short - the " +
+             "row trims long text.")]
+    [SerializeField] private string hintTitle = "REPOSITION";
+
     // Keeps track of the rows currently on screen, so we can trim old ones.
     private readonly List<GameObject> activeEntries = new List<GameObject>();
 
@@ -56,6 +81,16 @@ public class ActionFeedbackManager : MonoBehaviour
     {
         string penaltyText = penaltySeconds > 0 ? "-" + penaltySeconds + "s" : "";
         AddEntry("WRONG ACTION", tip, penaltyText, wrongColor);
+    }
+
+    /// <summary>
+    /// A correction that costs nothing - the player picked the right action
+    /// but is standing somewhere it does not make sense. No penalty text,
+    /// because no time was taken.
+    /// </summary>
+    public void ShowHint(string hint)
+    {
+        AddEntry(hintTitle, hint, "", hintColor);
     }
 
     // ---------- INTERNAL: build and manage a row ----------
