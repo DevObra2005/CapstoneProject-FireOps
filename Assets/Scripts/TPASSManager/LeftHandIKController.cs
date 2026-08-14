@@ -3,26 +3,36 @@ using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
 /// <summary>
-/// v17 — Controls the LEFT hand via Animation Rigging (Two Bone IK).
+/// v18 — Controls the LEFT hand via Animation Rigging (Two Bone IK).
 ///
-/// NEW IN v17 — ARRIVAL CALLBACKS:
-/// The reach routines now accept an optional onArrived callback that fires
-/// the moment the hand actually reaches its grip marker.
+/// CHANGED IN v18 — restTarget AND fingerGrip REMOVED:
 ///
-/// WHY THAT MATTERS:
-/// Tapping Twist used to start the pin turning INSTANTLY while the hand was
-/// still travelling toward it, so the pin twisted in empty air. The obvious
-/// fix — a delay field in SimulationManager — would have duplicated
-/// moveDuration in a second file. Two numbers meaning the same thing drift
-/// apart the first time one is retuned, and nothing warns you.
+/// Both fields were unassigned in the scene and both were null-guarded at
+/// every call site, so nothing broke — but "does nothing" and "is not
+/// needed" are different claims, and it was worth checking which applied.
 ///
-/// A callback has nothing to keep in sync. The hand finishes moving, says
-/// so, and SimulationManager decides what happens next. Retune moveDuration
-/// freely; the timing stays correct by construction.
+/// restTarget: the real release in ReturnToRestRoutine was always
+/// `targetWeight = 0f`, which fades the IK constraint out so the arm
+/// returns to its FK rig pose on its own. That happens with or without a
+/// rest marker. All restTarget added was an optional 0.4-second travel to a
+/// parking spot BEFORE the weight faded — a scenic route to the same
+/// destination. Removing it makes the release immediate rather than
+/// delayed, which reads no differently.
 ///
-/// Note the callback does NOT play the clip itself. This script never
-/// touches the Animator — it only reports arrival. SimulationManager still
-/// owns all clip playback, exactly as before.
+/// The same applied in Start(): the parking was skipped when null, and the
+/// weight is 0 at that point anyway, so the arm is in its FK pose and
+/// nothing was visible either way.
+///
+/// fingerGrip: the LEFT hand grabs a pin and a nozzle. It does not wrap a
+/// handle the way the right hand does, so it never needed sculpted curls.
+/// The right hand keeps its FingerGripController — that one is doing real
+/// work (grip, point, and the thumb press on Squeeze).
+///
+/// Editor testing and sculpt mode are DELIBERATELY KEPT. They live inside
+/// #if UNITY_EDITOR so they cost nothing in the APK, and Kitchen and
+/// Classroom Phase 2 still need their grip markers positioned. Animation
+/// Rigging constraints only evaluate in Play mode, so sculpt mode is the
+/// only way to do that. Deleting it would mean rebuilding it.
 ///
 /// HOW IT WORKS — THE WHOLE IDEA IN ONE PARAGRAPH:
 /// The hand does not produce the motion. The six baked Blender clips on
@@ -37,15 +47,39 @@ using UnityEngine.Animations.Rigging;
 /// animated part, the clip carries the hand along for free — one sculpt,
 /// correct in every frame of every clip.
 ///
+/// ARRIVAL CALLBACKS:
+/// The reach routines accept an optional onArrived callback that fires the
+/// moment the hand actually reaches its grip marker.
+///
+/// WHY THAT MATTERS:
+/// Tapping Twist used to start the pin turning INSTANTLY while the hand was
+/// still travelling toward it, so the pin twisted in empty air. The obvious
+/// fix — a delay field in SimulationManager — would have duplicated
+/// moveDuration in a second file. Two numbers meaning the same thing drift
+/// apart the first time one is retuned, and nothing warns you.
+///
+/// A callback has nothing to keep in sync. The hand finishes moving, says
+/// so, and SimulationManager decides what happens next. Retune moveDuration
+/// freely; the timing stays correct by construction.
+///
+/// Note the callback does NOT play the clip itself. This script never
+/// touches the Animator — it only reports arrival. SimulationManager still
+/// owns all clip playback.
+///
 /// THE SEQUENCE:
 ///   Twist -> hand reaches Grip_Pin, THEN the clip twists it.
 ///   Pull  -> hand does nothing. The clip pulls the pin, the hand follows.
 ///   Aim   -> hand travels from Grip_Pin across to Grip_Nozzle, THEN aims.
 ///
-/// Everything public that TPASSButtonManager and SimulationManager call is
-/// unchanged — the callback is an OPTIONAL extra argument, so existing
-/// call sites compile untouched:
+/// Every public method is unchanged in name and signature, so all existing
+/// call sites in TPASSButtonManager and SimulationManager compile untouched:
 ///   ReachPinAndTwist()  PullPin()  GrabNozzle()  ReleaseAll()
+///
+/// One timing note: ReleaseAll's onArrived now fires immediately, because
+/// there is no longer a travel to wait for. Nothing in the project passes a
+/// callback to ReleaseAll, so this changes nothing today — but if you ever
+/// chain something off it, know that it means "release started", not
+/// "hand has finished lowering".
 ///
 /// TEST KEYS (editor only, GAME tab):
 ///   8 = Twist   9 = Pull   0 = Aim   7 = FULL RESET
@@ -74,10 +108,6 @@ public class LeftHandIKController : MonoBehaviour
              "cannot reach.")]
     public Transform gripNozzle;
 
-    [Tooltip("Idle marker (child of PlayerCamera). Where the hand returns " +
-             "when it has nothing to hold.")]
-    public Transform restTarget;
-
     // ─────────────────────────────────────────────────────────────
     [Header("Movement Settings")]
     [Tooltip("Seconds for the hand to reach out to a grip marker. The Twist " +
@@ -88,13 +118,13 @@ public class LeftHandIKController : MonoBehaviour
     [Tooltip("Seconds for the hand to travel from the pin across to the nozzle.")]
     public float travelDuration = 0.5f;
 
-    [Tooltip("How fast the IK weight fades in/out. Higher = snappier.")]
+    [Tooltip("How fast the IK weight fades in/out. Higher = snappier.\n\n" +
+             "This is also what RELEASES the hand: ReleaseAll() drops the " +
+             "target weight to 0 and the arm returns to its FK rig pose over " +
+             "roughly 1/weightBlendSpeed seconds. Lower this if the hand " +
+             "snaps away too abruptly after the pin drops or the fire goes " +
+             "out; raise it if the release drags.")]
     public float weightBlendSpeed = 4f;
-
-    [Header("Fingers (optional)")]
-    [Tooltip("Optional FingerGripController on hand.L. If assigned, fingers " +
-             "curl on grip and relax on reset.")]
-    public FingerGripController fingerGrip;
 
 #if UNITY_EDITOR
     // =========================================================
@@ -116,6 +146,11 @@ public class LeftHandIKController : MonoBehaviour
     // back to rest afterwards does not matter — the offset is what rides
     // the animation.
     //
+    // KEEP THIS. Kitchen and Classroom Phase 2 still need their grip
+    // markers positioned, and this is the only way to do it. It is inside
+    // #if UNITY_EDITOR, so it adds nothing to the APK. Collapse the section
+    // in the Inspector if it is in the way.
+    //
     // NOTE: the 90-second timer will end the run and release the hand while
     // you sculpt. Raise Total Time on SimulationManager first, and put it
     // back to 90 when you are done.
@@ -127,7 +162,7 @@ public class LeftHandIKController : MonoBehaviour
     public bool enableTestKeys = true;
 
     [Tooltip("Tick DURING Play mode to hold the hand on the chosen grip " +
-             "marker so you can sculpt it. Untick to send the hand to rest.")]
+             "marker so you can sculpt it. Untick to release the hand.")]
     public bool sculptMode = false;
 
     [Tooltip("Which marker sculptMode holds the hand on.")]
@@ -155,20 +190,14 @@ public class LeftHandIKController : MonoBehaviour
 
     void Start()
     {
+        // FK owns the arm until Twist hands it over. At weight 0 the
+        // constraint writes nothing, so wherever ikTarget happens to sit is
+        // invisible — which is why there is no longer any need to park it
+        // somewhere sensible first.
         if (leftArmIK != null)
-            leftArmIK.weight = 0f;              // FK owns the arm until Twist
+            leftArmIK.weight = 0f;
 
         currentGrip = null;
-
-        // Park the target at rest so the first reach starts from a sensible
-        // place. Without this it sits at LeftHandTarget's authored position,
-        // and if that is near the rig origin the hand visibly dives to the
-        // floor before swinging up to the pin.
-        if (ikTarget != null && restTarget != null)
-        {
-            ikTarget.position = restTarget.position;
-            ikTarget.rotation = restTarget.rotation;
-        }
     }
 
     void Update()
@@ -238,15 +267,13 @@ public class LeftHandIKController : MonoBehaviour
             currentGrip = marker;
             targetWeight = 1f;
 
-            if (fingerGrip != null) fingerGrip.SetGrip(true);
-
             Debug.Log($"[LeftHandIK] Sculpt mode ON — holding {marker.name}. " +
                       "Move it in the Scene view, then Copy Component on its Transform.");
         }
         else
         {
             ReleaseAll();
-            Debug.Log("[LeftHandIK] Sculpt mode OFF — hand returning to rest.");
+            Debug.Log("[LeftHandIK] Sculpt mode OFF — hand released.");
         }
     }
 
@@ -258,14 +285,12 @@ public class LeftHandIKController : MonoBehaviour
 
     private void FullTestReset()
     {
-        if (fingerGrip != null) fingerGrip.SetGrip(false);
-
         ReleaseAll();
 
         if (HandAnimationController.Instance != null)
             HandAnimationController.Instance.leftHandControlledByIK = false;
 
-        Debug.Log("[LeftHandIK] FULL RESET — hand returning to rest.");
+        Debug.Log("[LeftHandIK] FULL RESET — hand released, FK back in charge.");
     }
 #endif
 
@@ -300,9 +325,16 @@ public class LeftHandIKController : MonoBehaviour
         StartExclusive(GrabNozzleRoutine(onArrived));
     }
 
+    /// <summary>
+    /// Lets go of whatever the hand is holding. The IK weight fades to 0 and
+    /// the arm returns to its FK rig pose — that fade IS the release.
+    ///
+    /// onArrived fires immediately, since there is nothing to wait for. It
+    /// means "release started", not "hand has finished lowering".
+    /// </summary>
     public void ReleaseAll(System.Action onArrived = null)
     {
-        StartExclusive(ReturnToRestRoutine(onArrived));
+        StartExclusive(ReleaseRoutine(onArrived));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -331,8 +363,6 @@ public class LeftHandIKController : MonoBehaviour
 
         currentGrip = gripPin;
 
-        if (fingerGrip != null) fingerGrip.SetGrip(true);
-
         // The hand is now ON the pin. Safe to start twisting it.
         onArrived?.Invoke();
     }
@@ -353,8 +383,6 @@ public class LeftHandIKController : MonoBehaviour
     {
         targetWeight = 1f;
 
-        if (fingerGrip != null) fingerGrip.SetGrip(true);
-
         if (gripNozzle == null)
         {
             Debug.LogWarning("[LeftHandIK] Grip Nozzle is not assigned.");
@@ -366,8 +394,9 @@ public class LeftHandIKController : MonoBehaviour
         // nozzle. Both endpoints are read fresh every frame because the
         // extinguisher (and the hose) may be moving during the move.
         //
-        // Note the hand may start from REST rather than from the pin, since
-        // ReleaseAll() fires after PinDrop. `from` being null is handled.
+        // Note the hand may start from nowhere in particular rather than
+        // from the pin, since ReleaseAll() fires after PinDrop and clears
+        // currentGrip. `from` being null is handled below.
         isTransitioning = true;
 
         Transform from = currentGrip;
@@ -396,21 +425,32 @@ public class LeftHandIKController : MonoBehaviour
         onArrived?.Invoke();
     }
 
-    private IEnumerator ReturnToRestRoutine(System.Action onArrived)
+    private IEnumerator ReleaseRoutine(System.Action onArrived)
     {
-        // Stop tracking any grip so LateUpdate lets go.
+        // Stop tracking any grip so LateUpdate lets go of ikTarget.
         currentGrip = null;
-        isTransitioning = true;
 
-        if (restTarget != null)
-            yield return MoveTargetTo(restTarget, moveDuration, matchRotation: true);
-
+        // Clear the transition flag explicitly. StartExclusive stops
+        // whatever routine was running, and if that routine happened to be
+        // halfway through a MoveTargetTo, this flag would be stuck true
+        // forever — and LateUpdate would silently never glue the hand to a
+        // marker again. Cheap insurance against a bug with no error message.
         isTransitioning = false;
+
+        // THIS is the release. Update() fades leftArmIK.weight toward 0 at
+        // weightBlendSpeed, and once the constraint stops writing, the arm
+        // returns to its FK rig pose on its own.
+        //
+        // There used to be a travel to a restTarget marker before this line.
+        // Removed in v18: the marker was never assigned, the arm ends in the
+        // same FK pose either way, and all it added was a delay before the
+        // fade started. If the release ever needs to be gentler, lower
+        // weightBlendSpeed rather than reintroducing a parking marker.
         targetWeight = 0f;
 
-        if (fingerGrip != null) fingerGrip.SetGrip(false);
-
+        // Nothing to wait for, so report immediately.
         onArrived?.Invoke();
+        yield break;
     }
 
     // ─────────────────────────────────────────────────────────────
