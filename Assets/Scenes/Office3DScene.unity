@@ -5060,11 +5060,9 @@ MonoBehaviour:
   ikTarget: {fileID: 152460229}
   gripPin: {fileID: 238791309}
   gripNozzle: {fileID: 2016232001}
-  restTarget: {fileID: 0}
   moveDuration: 0.4
   travelDuration: 0.5
   weightBlendSpeed: 4
-  fingerGrip: {fileID: 0}
   enableTestKeys: 0
   sculptMode: 0
   sculptGrip: 1
@@ -13764,6 +13762,7 @@ MonoBehaviour:
   losePanel: {fileID: 783462216}
   loseTitleText: {fileID: 1148705898}
   loseMessageText: {fileID: 193604207}
+  loseAttemptText: {fileID: 0}
 --- !u!1 &823954907
 GameObject:
   m_ObjectHideFlags: 0
@@ -26710,23 +26709,8 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 814743885}
         m_TargetAssemblyTypeName: ResultsUIManager, Assembly-CSharp
-        m_MethodName: ShowLoseRetry
+        m_MethodName: ShowLoseResult
         m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-  onDuplicate:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 814743885}
-        m_TargetAssemblyTypeName: ResultsUIManager, Assembly-CSharp
-        m_MethodName: ShowAlreadyRecorded
-        m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine

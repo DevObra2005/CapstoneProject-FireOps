@@ -6,11 +6,12 @@ using UnityEngine.UI;
 // Drives the 5 on-screen TPASS decision buttons (Twist, Pull,
 // Aim, Squeeze, Sweep) in the correct order, shuffled positions.
 //
-// THIS SCRIPT IS NOW A GATEKEEPER, NOT A CHOREOGRAPHER.
-// It answers two questions and nothing else:
-//   1. Is this the RIGHT step to tap?
-//   2. Is the player STANDING somewhere the action makes sense?
-// If both pass, it hands off to SimulationManager and steps back.
+// THIS SCRIPT IS A GATEKEEPER, NOT A CHOREOGRAPHER.
+// It answers three questions and nothing else:
+//   1. Is the previous step still ANIMATING?
+//   2. Is this the RIGHT step to tap?
+//   3. Is the player STANDING somewhere the action makes sense?
+// If all three pass, it hands off to SimulationManager and steps back.
 //
 // WHY THE ANIMATION CALLS WERE REMOVED:
 // This script used to also call leftHandIK.ReachPinAndTwist(),
@@ -26,6 +27,34 @@ using UnityEngine.UI;
 // One owner per behaviour. SimulationManager already owns clips,
 // masked layers, thumb press and timing, so it owns the rest of
 // the choreography too. This file owns the buttons.
+//
+// THE ANTI-SPAM GUARD (rewritten):
+// Tapping Pull then Aim immediately left the hand frozen and the Aim
+// clip never playing. PullSequence runs for about 0.9s and ends with
+// leftHandIK.ReleaseAll(); a tap on Aim inside that window had already
+// started a nozzle travel, and the late release went through
+// StartExclusive and STOPPED it - taking the callback that plays the
+// Aim clip with it. Silent, no error.
+//
+// The guard that was here did nothing:
+//
+//     if (HandAnimationController.Instance.IsAnimating) return;
+//
+// IsAnimating is only set inside RightDominantRoutine and SweepRoutine.
+// Both are no-ops now that the IK flags own the arms and the masked
+// Sweep clip owns the sweep, so neither runs and the flag is
+// permanently false. It had been protecting nothing - it just looked
+// like protection.
+//
+// SimulationManager.IsStepBusy replaces it. That flag is raised when a
+// step's choreography starts and cleared by the routine that owns the
+// real duration, so there is no timer here duplicating a number that
+// lives somewhere else.
+//
+// A blocked tap costs NOTHING: no penalty, no step advanced, button
+// stays live. The player is EARLY, not WRONG. It is also silent - the
+// lock lasts well under a second, and a feedback row for every
+// impatient tap would be noisier than the problem.
 //
 // FIRE POSITION VALIDATION:
 // Squeeze is blocked unless the player is standing at a sensible
@@ -174,9 +203,20 @@ public class TPASSButtonManager : MonoBehaviour
         if (PlayerPrefs.GetInt("SimulationMode", 0) != 1) return;
         if (SimulationManager.Instance == null) return;
 
-        // Block taps while a hand animation is mid-play (anti-spam).
-        if (HandAnimationController.Instance != null &&
-            HandAnimationController.Instance.IsAnimating) return;
+        // ---- STILL ANIMATING (anti-spam) ----
+        // The previous step's choreography has not finished. Ignore the tap
+        // entirely: no penalty, no step advanced, button stays live.
+        //
+        // This is what stops the Pull -> Aim bug. It also covers the
+        // wrong-tap cooldown, so five panicked taps cannot drain the whole
+        // clock in half a second.
+        //
+        // Deliberately silent - the lock lasts under a second.
+        if (SimulationManager.Instance.IsStepBusy)
+        {
+            Debug.Log($"[TPASS] {tapped.step} ignored - previous step still animating.");
+            return;
+        }
 
         int currentStep = SimulationManager.Instance.CurrentStep;
 
@@ -280,6 +320,18 @@ public class TPASSButtonManager : MonoBehaviour
     // RIGHT-HAND animations per step.
     // TPASS_Twist has NO case on purpose — the left IK hand acts
     // alone while the right hand holds the tank steady.
+    //
+    // NOTE: every one of these is currently a NO-OP. PlayPull, PlayAim
+    // and PlaySqueeze do nothing while rightHandControlledByIK and
+    // leftHandControlledByIK are ticked, and PlaySweep does nothing
+    // while sweepControlledByAnimation is ticked - they only fire
+    // OnAnimationComplete and return.
+    //
+    // Kept anyway, for two reasons. It is the fallback path if a future
+    // environment ever needs FK arm motion, and something outside these
+    // files may still be subscribed to OnAnimationComplete. Removing it
+    // is a safe cleanup AFTER defense, once you can grep the project for
+    // that subscription - not before.
     // -------------------------------------------------------
     private void PlayHandAnimationForStep(SimulationInteractable.SimStep step)
     {

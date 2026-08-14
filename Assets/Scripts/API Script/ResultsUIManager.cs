@@ -10,14 +10,24 @@ using TMPro;
 //
 // LOSE REASONS (each sets its own kicker so the panel label matches):
 //   TIME EXPIRED        -> timer hit zero, player didn't finish
-//                          (ShowLoseTimerRanOut, from SimulationManager onLose)
 //   TOO MANY MISTAKES   -> finished but scored < 50%
-//                          (ShowLoseRetry, from ResultsSubmitter onRetry)
 //   COULDN'T SAVE       -> connection / unknown error
-//                          (ShowLoseNetworkIssue)
+//
+// ONE HANDLER FOR BOTH FAILURES:
+// Every attempt is submitted now, including timeouts, so a failed run
+// comes back from Laravel with fail_reason telling us WHICH kind it
+// was. ShowLoseResult reads that field and picks the right wording.
+//
+// PRACTICE RUNS:
+// Recording stops at the first pass. A run played after that comes
+// back with already_recorded = true and nothing written to the
+// database. The player still sees Win or Lose based on how they
+// actually played — but the panel says the run did not count, so a
+// 95% practice score is not mistaken for a new record when their
+// certificate says 70%.
 //
 // Tips were removed from these modals — the full penalty breakdown
-// lives in the Performance Results screen (data is stored in the DB).
+// lives in the Performance Results screen.
 // -------------------------------------------------------
 
 public class ResultsUIManager : MonoBehaviour
@@ -36,19 +46,25 @@ public class ResultsUIManager : MonoBehaviour
     [Tooltip("Optional — shows total penalty seconds taken during the run")]
     public TextMeshProUGUI winPenaltyText;
 
-    [Tooltip("Optional — dry-run note line on the win panel.")]
+    [Tooltip("Optional — note line on the win panel. Used for 'passed on " +
+             "attempt N' and for the practice-run notice.")]
     public TextMeshProUGUI winNoteText;
 
-    [Tooltip("Optional — the stats row (Score/Rating/Time chips). Hidden on a dry run.")]
+    [Tooltip("Optional — the stats row (Score/Rating/Time chips).")]
     public GameObject winStatsRow;
 
     [Header("Lose Panel")]
     [Tooltip("Optional — the small kicker label above the title " +
-             "(e.g. 'TIME EXPIRED' / 'TOO MANY MISTAKES'). Set per lose reason.")]
+             "(e.g. 'TIME EXPIRED' / 'TOO MANY MISTAKES').")]
     public TextMeshProUGUI loseKickerText;
     public GameObject losePanel;
     public TextMeshProUGUI loseTitleText;
     public TextMeshProUGUI loseMessageText;
+
+    [Tooltip("Optional — shows which attempt this was, e.g. 'Attempt 3'. " +
+             "Shows 'Practice run' instead when the participant has already " +
+             "passed and the run was not recorded.")]
+    public TextMeshProUGUI loseAttemptText;
 
     private void Start()
     {
@@ -73,10 +89,10 @@ public class ResultsUIManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // WIN — Laravel confirmed the run was saved (a real pass)
+    // WIN — the run passed
     // Hook to: ResultsSubmitter -> On Saved
     // -------------------------------------------------------
-    public void ShowWin(ResultsSuccessResponse response)
+    public void ShowWin(SubmitResultResponse response)
     {
         HideAllPanels();
         if (winPanel == null) return;
@@ -106,59 +122,94 @@ public class ResultsUIManager : MonoBehaviour
         }
 
         if (winNoteText != null)
-            winNoteText.gameObject.SetActive(false);
-    }
-
-    // -------------------------------------------------------
-    // ALREADY RECORDED (replay / dry run) — no score shown
-    // Hook to: ResultsSubmitter -> On Duplicate
-    // -------------------------------------------------------
-    public void ShowAlreadyRecorded(string message)
-    {
-        HideAllPanels();
-        if (winPanel == null) return;
-
-        winPanel.SetActive(true);
-
-        if (winTitleText != null)
-            winTitleText.text = "Fire Contained!";
-
-        if (winStatsRow != null) winStatsRow.SetActive(false);
-
-        if (winScoreLabelText != null) winScoreLabelText.text = "";
-        if (winPercentText != null) winPercentText.text = "";
-        if (winTimeText != null) winTimeText.text = "";
-        if (winPenaltyText != null) winPenaltyText.text = "";
-
-        if (winNoteText != null)
         {
-            winNoteText.gameObject.SetActive(true);
-            winNoteText.text = "You've already completed this event. This was a practice run — your first attempt is the one that's recorded.";
+            if (response.already_recorded)
+            {
+                // A practice run. The score above is real — it just was
+                // not saved, because their passing attempt is already on
+                // record. Without this line a 95% practice run looks like
+                // a new result while the certificate still says 70%.
+                winNoteText.gameObject.SetActive(true);
+                winNoteText.text = "Practice run — your recorded result for this event is unchanged.";
+            }
+            else if (response.attempt_number > 1)
+            {
+                // Passing on a later try is worth acknowledging — it took
+                // them more than one go and they got there.
+                winNoteText.gameObject.SetActive(true);
+                winNoteText.text = "Passed on attempt " + response.attempt_number + ".";
+            }
+            else
+            {
+                winNoteText.gameObject.SetActive(false);
+            }
         }
     }
 
     // -------------------------------------------------------
-    // LOSE — TOO MANY MISTAKES (finished but scored < 50%)
+    // LOSE — the run did not pass.
     // Hook to: ResultsSubmitter -> On Retry
+    //
+    // Replaces both ShowLoseRetry and ShowLoseTimerRanOut. The server
+    // sees every failure now, so fail_reason distinguishes them:
+    //   "timeout"   -> the clock ran out before they finished
+    //   "low_score" -> finished in time, too many wrong actions
     // -------------------------------------------------------
-    public void ShowLoseRetry(ResultsFailResponse response)
+    public void ShowLoseResult(SubmitResultResponse response)
     {
-        ShowLosePanel(
-            kicker: "TOO MANY MISTAKES",
-            title: "Fire Spread!",
-            message: "You finished, but made too many mistakes. Your score was " + response.percentage_score + "%, below the 50% needed to pass.");
+        string kicker;
+        string message;
+
+        // JsonUtility turns a JSON null into an EMPTY STRING, not null,
+        // so compare against "timeout" directly rather than null-checking.
+        if (response.fail_reason == "timeout")
+        {
+            kicker = "TIME EXPIRED";
+            message = "The fire got out of control before you finished. " +
+                      "Review what went wrong, then try again.";
+        }
+        else
+        {
+            kicker = "TOO MANY MISTAKES";
+            message = "You finished, but made too many mistakes. Your score was " +
+                      response.percentage_score + "%, below the 50% needed to pass.";
+        }
+
+        // Failing a practice run must not read as losing something they
+        // already earned — their passing attempt still stands.
+        if (response.already_recorded)
+        {
+            message += " This was a practice run — your recorded result is unchanged.";
+        }
+
+        ShowLosePanel(kicker, "Fire Spread!", message);
+
+        if (loseAttemptText != null)
+        {
+            loseAttemptText.text = response.already_recorded
+                ? "Practice run"
+                : "Attempt " + response.attempt_number;
+        }
     }
 
     // -------------------------------------------------------
-    // LOSE — TIME EXPIRED (timer hit zero, didn't finish)
-    // Hook to: SimulationManager -> On Lose
+    // LOSE — TIME EXPIRED, local fallback.
+    //
+    // Kept for SimulationManager's onLose UnityEvent, which fires the
+    // instant the timer hits zero — BEFORE the server responds. So this
+    // shows immediately, then ShowLoseResult refreshes it with the real
+    // attempt number a moment later.
+    //
+    // It is also the only thing the player sees if the POST fails, which
+    // is exactly when you want a local fallback.
     // -------------------------------------------------------
     public void ShowLoseTimerRanOut()
     {
         ShowLosePanel(
             kicker: "TIME EXPIRED",
             title: "Fire Spread!",
-            message: "The fire got out of control before you finished. Review what went wrong, then try again.");
+            message: "The fire got out of control before you finished. " +
+                     "Review what went wrong, then try again.");
     }
 
     // -------------------------------------------------------
@@ -191,6 +242,9 @@ public class ResultsUIManager : MonoBehaviour
 
         if (loseMessageText != null)
             loseMessageText.text = message;
+
+        if (loseAttemptText != null)
+            loseAttemptText.text = "";
     }
 
     // Hides all result panels so only one shows at a time.

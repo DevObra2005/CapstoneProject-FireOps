@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 
 // ── One entry in the "steps" array ──────────────────────────────────
-// This mirrors ONE object inside the steps: [ ... ] list in the JSON spec.
-// [System.Serializable] tells Unity "this class can be converted to/from JSON"
 [System.Serializable]
 public class StepResult
 {
@@ -15,38 +13,40 @@ public class StepResult
 }
 
 // ── The full request body Unity sends to Laravel ────────────────────
-// This is the "form" we fill out and POST — matches your spec exactly.
 [System.Serializable]
 public class ResultsPayload
 {
     public int event_id;
     public string environment;         // "office", "kitchen", "classroom"
-    public int phase2_score;           // seconds remaining
+    public int phase2_score;           // seconds remaining (0 on a timeout)
     public int total_penalties;        // total seconds deducted
-    public bool phase2_passed;         // Unity only ever sends true (per spec)
+    public bool phase2_passed;         // false when the timer ran out
     public List<StepResult> steps;
 }
 
-// ── What Laravel sends back on a PASS ────────────────────────────────
+// ── What POST /api/participant/results sends back ────────────────────
+// NOTE THE NAME. There is already a ResultsResponse used by
+// PerformanceResultsManager for the GET endpoint — a completely
+// different shape (environments, event_name). Two endpoints, two
+// classes, two names.
+//
+// Every attempt UP TO AND INCLUDING the first pass is recorded. After
+// that the participant's record is final: they can keep playing, but
+// nothing is written and already_recorded comes back true.
+//
+// IMPORTANT: branch on 'passed' for Win vs Lose, never on 'saved'.
 [System.Serializable]
-public class ResultsSuccessResponse
+public class SubmitResultResponse
 {
-    public bool saved;
+    public bool saved;             // false on a practice run — not a Win/Lose signal
+    public bool already_recorded;  // true = they had already passed; nothing saved
+    public bool passed;            // true = Win screen, false = Lose screen
+    public bool retry;             // opposite of passed — offer another go
+    public string fail_reason;     // "" on a pass, "timeout" or "low_score" on a fail
+    public int attempt_number;     // 1, 2, 3... — 0 on a practice run
     public string message;
     public int session_id;
     public int percentage_score;
-    public string score_label;     // "Excellent" / "Good" / "Passed"
+    public string score_label;     // "Excellent" / "Good" / "Passed" / "Failed"
     public int time_remaining;
-}
-
-// ── What Laravel sends back on FAIL / DUPLICATE ──────────────────────
-// saved will be false. "retry" only appears on Fail Type B, so it's
-// nullable-ish here — we just check its value defensively in code.
-[System.Serializable]
-public class ResultsFailResponse
-{
-    public bool saved;
-    public bool retry;
-    public string message;
-    public int percentage_score;
 }
