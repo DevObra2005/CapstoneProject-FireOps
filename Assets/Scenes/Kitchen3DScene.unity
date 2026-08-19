@@ -93,7 +93,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 112000000, guid: 6bbe9e0eca1e53047904cdc8c989a93d, type: 2}
+  m_LightingDataAsset: {fileID: 112000000, guid: b741f2cfbafbbb34daac4c031c883561, type: 2}
   m_LightingSettings: {fileID: 4890085278179872738, guid: d73329fe42f7559458b6f54dd583b6af, type: 2}
 --- !u!196 &4
 NavMeshSettings:
@@ -785,6 +785,7 @@ MonoBehaviour:
   losePanel: {fileID: 9895372}
   loseTitleText: {fileID: 2112588702}
   loseMessageText: {fileID: 1764544783}
+  loseAttemptText: {fileID: 0}
 --- !u!224 &54033773
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1076,21 +1077,6 @@ MonoBehaviour:
         m_TargetAssemblyTypeName: ResultsUIManager, Assembly-CSharp
         m_MethodName: ShowLoseRetry
         m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-  onDuplicate:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 54033772}
-        m_TargetAssemblyTypeName: ResultsUIManager, Assembly-CSharp
-        m_MethodName: ShowAlreadyRecorded
-        m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -1547,175 +1533,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12f5fa2a348026e49bf8dd0ba75162e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
---- !u!1 &169702585
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 169702586}
-  - component: {fileID: 169702591}
-  - component: {fileID: 169702590}
-  - component: {fileID: 169702589}
-  - component: {fileID: 169702588}
-  - component: {fileID: 169702587}
-  m_Layer: 0
-  m_Name: OilSpill
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &169702586
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 169702585}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.858, y: -1.064, z: -1.787}
-  m_LocalScale: {x: 0.39, y: 0.28, z: 0.58}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2032655443}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &169702587
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 169702585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
-  interactDistance: 5
-  hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
-  glowIntensity: 0.55
-  pulseSpeed: 1.6
-  pulseAmount: 0.2
-  fadeSpeed: 14
---- !u!114 &169702588
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 169702585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe16c5afa4916814b86aab10fcf795de, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HazardDialogue
-  hazardName: OilSpill
-  lines:
-  - text: Spilled cooking oil is one of the most common fire hazards in a kitchen.
-      Grease and oil ignite easily, especially this close to the stove.
-    characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
-    demoVideo: {fileID: 0}
-  - text: If a flame or spark reaches it, the fire can spread across the floor in
-      seconds. It's also a slipping hazard for anyone moving around while cooking.
-    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
-    demoVideo: {fileID: 0}
-  - text: 'The rule is simple: good housekeeping. Clean up spills right away and
-      keep the cooking area free of grease. Let''s clean this up.'
-    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
-    demoVideo: {fileID: 0}
-  completionLines:
-  - text: Well done. Wiping up spilled oil right away removes the fuel before it
-      can ever catch fire.
-    characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
-    demoVideo: {fileID: 0}
-  - text: "Keep the cooking area clean at all times \u2014 that's your best defense
-      against a grease fire."
-    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
-    demoVideo: {fileID: 0}
-  actionTarget: {fileID: 227049633}
-  isComplete: 0
---- !u!65 &169702589
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 169702585}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &169702590
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 169702585}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: e99ff07c6989da041b6bf17f9b3cffb8, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &169702591
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 169702585}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &174233660
 GameObject:
   m_ObjectHideFlags: 0
@@ -1990,6 +1807,163 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 178738684}
   m_CullTransparentMesh: 1
+--- !u!1001 &187671152
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 604487687}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.19999997
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.19999997
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.248943
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.048000008
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -6.3865113
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.9999997
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.0007573961
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -178.2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      propertyPath: m_Name
+      value: LPG_Assembly
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8620263758391487001, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 187671157}
+    - targetCorrespondingSourceObject: {fileID: 8620263758391487001, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 187671156}
+    - targetCorrespondingSourceObject: {fileID: 8620263758391487001, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 187671155}
+  m_SourcePrefab: {fileID: 100100000, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+--- !u!4 &187671153 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+  m_PrefabInstance: {fileID: 187671152}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &187671154 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8620263758391487001, guid: 27ead1fd6aa823a45b77244a9413b3aa, type: 3}
+  m_PrefabInstance: {fileID: 187671152}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &187671155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187671154}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe16c5afa4916814b86aab10fcf795de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HazardDialogue
+  hazardName: Octopus Wiring
+  lines:
+  - text: Rubber LPG hoses harden and crack with age, heat and cooking oil exposure.
+      A cracked hose leaks gas that pools near the stove, where any spark can ignite
+      it.
+    characterPose: {fileID: 0}
+    demoVideo: {fileID: 0}
+  - text: Do not attempt to repair a gas line yourself. Report it and have it replaced
+      by a qualified technician.
+    characterPose: {fileID: 0}
+    demoVideo: {fileID: 0}
+  completionLines:
+  - text: Regular checking of the hose and regulator catches wear before it becomes
+      a leak.
+    characterPose: {fileID: 0}
+    demoVideo: {fileID: 0}
+  actionTarget: {fileID: 0}
+  isComplete: 0
+--- !u!65 &187671156
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187671154}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.4617425, y: 3.1052148, z: 2.88031}
+  m_Center: {x: 1.1597427, y: -0.05768576, z: 0.025092226}
+--- !u!114 &187671157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187671154}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
+  interactDistance: 5
+  hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
+  glowIntensity: 0.55
+  pulseSpeed: 1.6
+  pulseAmount: 0.2
+  fadeSpeed: 14
 --- !u!1 &191517749
 GameObject:
   m_ObjectHideFlags: 0
@@ -2527,136 +2501,6 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
---- !u!1 &227049633
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 227049634}
-  - component: {fileID: 227049638}
-  - component: {fileID: 227049637}
-  - component: {fileID: 227049636}
-  - component: {fileID: 227049635}
-  m_Layer: 0
-  m_Name: MopTool_Placeholder
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &227049634
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227049633}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6.247, y: -0.964, z: -1.612}
-  m_LocalScale: {x: 0.24, y: 0.97, z: 0.28}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2032655443}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &227049635
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227049633}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 37aeb5f9017e2b940afdef0ec659ebdc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HazardActionTarget
-  highlightColor: {r: 0.239, g: 0.91, b: 0.318, a: 1}
-  glowIntensity: 0.5
-  pulseSpeed: 1.8
-  pulseDepth: 1
-  fadeInSpeed: 5
---- !u!65 &227049636
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227049633}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &227049637
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227049633}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &227049638
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227049633}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &236971998
 GameObject:
   m_ObjectHideFlags: 0
@@ -2684,7 +2528,7 @@ ReflectionProbe:
   m_Enabled: 1
   serializedVersion: 2
   m_Type: 0
-  m_Mode: 1
+  m_Mode: 0
   m_RefreshMode: 0
   m_TimeSlicingMode: 0
   m_Resolution: 128
@@ -2814,7 +2658,7 @@ Transform:
   m_GameObject: {fileID: 238003027}
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0.608, y: 3.034, z: 4.012}
+  m_LocalPosition: {x: 0.608, y: 3.034, z: 6.923}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4033,6 +3877,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 414293185}
+  - {fileID: 187671153}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &618213135
@@ -6192,26 +6037,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LeftHandIKController
   leftArmIK: {fileID: 0}
   ikTarget: {fileID: 0}
-  useClipDrivenPin: 1
   gripPin: {fileID: 0}
   gripNozzle: {fileID: 0}
-  travelDuration: 0.5
-  pinTarget: {fileID: 0}
-  pinTwistTarget: {fileID: 0}
-  pinPullTarget: {fileID: 0}
-  aimTarget: {fileID: 0}
-  matchAimRotation: 1
-  aimDuration: 0.5
-  restTarget: {fileID: 0}
   moveDuration: 1
+  travelDuration: 0.5
   weightBlendSpeed: 4
-  twistDuration: 1
-  pullDuration: 1
-  pullDistance: 0.12
-  pinControllerForTests: {fileID: 0}
-  nozzleControllerForTests: {fileID: 0}
-  fingerGrip: {fileID: 0}
   enableTestKeys: 1
+  sculptMode: 0
+  sculptGrip: 1
 --- !u!114 &872237300
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6243,6 +6076,10 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  maxStep: 8
+  useKitchenHints: 0
+  towelDip: {fileID: 0}
+  towelCover: {fileID: 0}
   resultsSubmitter: {fileID: 90235161}
   pressAlarm: {fileID: 872237298}
   extinguisherAnimator: {fileID: 0}
@@ -6253,9 +6090,21 @@ MonoBehaviour:
   clipSqueeze: Squeeze
   clipSweep: Sweep
   pinDropDelay: 0.4
+  hoseLayerIndex: 1
+  pinLayerIndex: 2
+  leverLayerIndex: 3
+  hoseBlendDuration: 0.25
   pinObject: {fileID: 0}
   leftHandIK: {fileID: 872237299}
   pinDropClipLength: 0.5
+  rightHandGrip: {fileID: 0}
+  sprayVFX: {fileID: 0}
+  fireController: {fileID: 0}
+  relaxDuration: 0.8
+  releaseLeftHandOnFireOut: 1
+  relaxExtinguisherOnFireOut: 1
+  wrongActionCooldown: 0.6
+  maxStepLockout: 3
   currentStep: 1
   simActive: 0
 --- !u!4 &872237301
@@ -6683,6 +6532,129 @@ Transform:
   m_Children: []
   m_Father: {fileID: 885460188}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &906114538
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2032655443}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 6.407
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.426
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.596
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.68045944
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.72112435
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.089363635
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.09470411
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -105.32
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -77.76001
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 77.324
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      propertyPath: m_Name
+      value: Mop
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 906114541}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 906114544}
+  m_SourcePrefab: {fileID: 100100000, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+--- !u!4 &906114539 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+  m_PrefabInstance: {fileID: 906114538}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &906114540 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
+  m_PrefabInstance: {fileID: 906114538}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &906114541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 906114540}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37aeb5f9017e2b940afdef0ec659ebdc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HazardActionTarget
+  highlightColor: {r: 0.239, g: 0.91, b: 0.318, a: 1}
+  glowIntensity: 0.5
+  pulseSpeed: 1.8
+  pulseDepth: 1
+  fadeInSpeed: 5
+--- !u!65 &906114544
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 906114540}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.2519312, y: 2.1381266, z: 4.4096284}
+  m_Center: {x: 0.006436879, y: 0.59494406, z: 1.9932258}
 --- !u!1 &917846821
 GameObject:
   m_ObjectHideFlags: 0
@@ -7267,6 +7239,190 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1038338558}
   m_CullTransparentMesh: 1
+--- !u!1001 &1073905860
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2032655443}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 3.655
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.487
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.118
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: bc136739c08303b49ad7b59630a82b4d, type: 2}
+    - target: {fileID: 919132149155446097, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      propertyPath: m_Name
+      value: OilSpill
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1073905865}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1073905864}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1073905863}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1073905868}
+  m_SourcePrefab: {fileID: 100100000, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+--- !u!4 &1073905861 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+  m_PrefabInstance: {fileID: 1073905860}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1073905862 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 0581eb9eb28a0d5449967a134b016de7, type: 3}
+  m_PrefabInstance: {fileID: 1073905860}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1073905863
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073905862}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.5625295, y: 0.5680864, z: 0.0034850275}
+  m_Center: {x: -0.015114993, y: -0.013942273, z: -0.0024069638}
+--- !u!114 &1073905864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073905862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
+  interactDistance: 5
+  hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
+  glowIntensity: 0.55
+  pulseSpeed: 1.6
+  pulseAmount: 0.2
+  fadeSpeed: 14
+--- !u!114 &1073905865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073905862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe16c5afa4916814b86aab10fcf795de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HazardDialogue
+  hazardName: OilSpill
+  lines:
+  - text: Spilled cooking oil is one of the most common fire hazards in a kitchen.
+      Grease and oil ignite easily, especially this close to the stove.
+    characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
+    demoVideo: {fileID: 0}
+  - text: If a flame or spark reaches it, the fire can spread across the floor in
+      seconds. It's also a slipping hazard for anyone moving around while cooking.
+    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
+    demoVideo: {fileID: 0}
+  - text: 'The rule is simple: good housekeeping. Clean up spills right away and
+      keep the cooking area free of grease. Let''s clean this up.'
+    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
+    demoVideo: {fileID: 0}
+  completionLines:
+  - text: Well done. Wiping up spilled oil right away removes the fuel before it
+      can ever catch fire.
+    characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
+    demoVideo: {fileID: 0}
+  - text: "Keep the cooking area clean at all times \u2014 that's your best defense
+      against a grease fire."
+    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
+    demoVideo: {fileID: 0}
+  actionTarget: {fileID: 906114540}
+  isComplete: 0
+--- !u!114 &1073905868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073905862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d78d28661d34d63459ab66b4b3747294, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OilCleanupEffect
+  oilObject: {fileID: 0}
 --- !u!1 &1156255156
 GameObject:
   m_ObjectHideFlags: 0
@@ -7429,8 +7585,21 @@ PrefabInstance:
       propertyPath: m_Name
       value: KitchenEnvironment
       objectReference: {fileID: 0}
+    - target: {fileID: 2998455905634212979, guid: 7e33abf9836ad1a4b8bd8e522628328d, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.176
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998455905634212979, guid: 7e33abf9836ad1a4b8bd8e522628328d, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.565
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998455905634212979, guid: 7e33abf9836ad1a4b8bd8e522628328d, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.726
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 4357484523581587777, guid: 7e33abf9836ad1a4b8bd8e522628328d, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 219483955885037253, guid: 7e33abf9836ad1a4b8bd8e522628328d, type: 3}
       insertIndex: -1
@@ -9036,11 +9205,15 @@ MonoBehaviour:
   timePenalty: 10
   showFromStep: 3
   showToStep: 7
-  fireController: {fileID: 0}
-  pinController: {fileID: 0}
-  sprayVFX: {fileID: 0}
-  nozzleController: {fileID: 0}
-  leftHandIK: {fileID: 872237299}
+  requireFirePosition: 1
+  fireTarget: {fileID: 0}
+  playerCamera: {fileID: 0}
+  tooCloseDistance: 1.5
+  tooFarDistance: 4
+  facingAngle: 60
+  tooFarHint: Move closer to the fire
+  tooCloseHint: "You're too close \u2014 step back"
+  notFacingHint: Face the fire before you spray
 --- !u!114 &1343956940
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9441,7 +9614,7 @@ Transform:
   m_GameObject: {fileID: 1431113926}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.533, y: 1.619, z: 4.038}
+  m_LocalPosition: {x: -0.337, y: 1.589, z: 7.043}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9675,6 +9848,8 @@ MonoBehaviour:
   fadeDuration: 1
   correctColor: {r: 0.18, g: 0.8, b: 0.44, a: 1}
   wrongColor: {r: 0.91, g: 0.3, b: 0.24, a: 1}
+  hintColor: {r: 0.95, g: 0.68, b: 0.18, a: 1}
+  hintTitle: REPOSITION
 --- !u!114 &1498197243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14865,48 +15040,58 @@ MonoBehaviour:
     curlAxis: 0
     curlAngle: 4.8
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208628}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: -14.7
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208625}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: -5
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208626}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: -10
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208623}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: -3.68
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208624}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 1
     curlAngle: 41.5
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208621}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 0
     curlAngle: 0.54
     pointAngle: 0
+    squeezeAngle: 0
   - bone: {fileID: 2019208622}
     baseOffset: {x: 0, y: 0, z: 0}
     curlAxis: 2
     curlAngle: 58.6
     pointAngle: 0
+    squeezeAngle: 0
   curlSpeed: 8
   pointSpeed: 10
+  squeezeSpeed: 6
   restGrip: 0
   startGripped: 0
   previewInEditor: 0
   previewGrip: 0.8
   previewPoint: 0
+  previewSqueeze: 0
 --- !u!114 &2019208634
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14929,6 +15114,7 @@ MonoBehaviour:
   sweepCount: 2
   rightHandControlledByIK: 1
   leftHandControlledByIK: 1
+  sweepControlledByAnimation: 1
 --- !u!114 &2019208635
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15020,8 +15206,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 227049634}
-  - {fileID: 169702586}
+  - {fileID: 906114539}
+  - {fileID: 1073905861}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2053205189

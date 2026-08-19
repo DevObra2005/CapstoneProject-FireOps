@@ -6,11 +6,10 @@ using UnityEngine.Events;
 // -------------------------------------------------------
 // SimulationManager — the brain of Phase 2.
 //
-// Owns the 90-second timer, tracks the current step (1-8), applies
-// penalties for wrong actions, collects step results, and ends the
-// run as a Win or a Lose.
+// Owns the 90-second timer, tracks the current step, applies penalties for
+// wrong actions, collects step results, and ends the run as a Win or a Lose.
 //
-// STEP BREAKDOWN (Office / Classroom — TPASS):
+// STEP BREAKDOWN (Office / Classroom — TPASS, 8 steps):
 //   1 Sound Alarm        -> right-hand press (PressAlarmController)
 //   2 Grab Extinguisher  -> handled by ExtinguisherGrab
 //   3 TPASS Twist        -> PinLayer, after the hand arrives
@@ -20,6 +19,38 @@ using UnityEngine.Events;
 //   7 TPASS Sweep        -> HoseLayer, then everything relaxes
 //   8 Evacuate           -> completed by Door, not RegisterCorrectAction
 //
+// STEP BREAKDOWN (Kitchen — WCTL):
+//   Sound Alarm    -> matched by name, same Alarm branch
+//   Grab Towel     -> matched by name, same Grab branch
+//   WCTL Wet       -> TowelDipController: dip, soak, wring, lift
+//   WCTL Cover     -> no choreography yet
+//   WCTL Turn Off  -> no choreography yet
+//   Evacuate       -> completed by Door
+//
+// The exact numbering lives in KitchenStep.cs and in maxStep below — keep
+// those two in agreement or the run ends early.
+//
+// -------------------------------------------------------
+// HOW ONE MANAGER SERVES BOTH SEQUENCES
+//
+// Office uses SimulationInteractable.SimStep. Kitchen uses KitchenStep. Both
+// are numbered from 1, and both are SEPARATE enums on purpose — currentStep
+// advances with a plain ++, and SimulationInteractable compares step numbers
+// with > and < to judge whether a tap was too early. Non-sequential values
+// would break that comparison silently, with no error to follow.
+//
+// This file never cared which enum a step came from: every use was
+// step.ToString(). So the enum methods now forward to STRING methods, and
+// Kitchen calls those directly. Office and Classroom call sites are unchanged.
+//
+// TWO INSPECTOR FIELDS carry the difference:
+//   maxStep         — 8 for TPASS, fewer for WCTL
+//   useKitchenHints — which wrong-action hint table to read
+//
+// PlayClipForStep matches on SUBSTRINGS, which is why Kitchen gets two
+// branches for free: "SoundAlarm" hits Alarm, "GrabTowel" hits Grab.
+//
+// -------------------------------------------------------
 // THINGS THAT COST DAYS TO LEARN — do not undo these:
 //
 // * MASKED LAYERS. The six clips are frame ranges carved out of ONE
@@ -68,6 +99,29 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private UnityEvent onWin;
     [SerializeField] private UnityEvent onLose;
 
+    [Header("Environment")]
+    [Tooltip("How many steps this environment has. Office and Classroom run " +
+             "TPASS across 8. Kitchen runs WCTL across fewer.\n\n" +
+             "The step counter stops climbing here, so a wrong value either " +
+             "ends the run early or leaves it unfinishable. It MUST match the " +
+             "highest value in the enum that scene uses.\n\n" +
+             "WATCH OUT: a scene object saved BEFORE this field existed loads " +
+             "it as 0, not 8. If a run freezes on step 1, check this first.")]
+    [SerializeField] private int maxStep = 8;
+
+    [Tooltip("Tick in the KITCHEN scene only.\n\n" +
+             "Wrong-action hints are keyed by step NUMBER, and the same number " +
+             "means a different instruction in each environment — so the " +
+             "lookup needs to know which sequence it is describing.")]
+    [SerializeField] private bool useKitchenHints = false;
+
+    [Header("Kitchen — Wet Step")]
+    [Tooltip("Plays the dip, soak, wring and lift on the Wet step. Leave empty " +
+             "in Office and Classroom — the branch falls through to an " +
+             "immediate unlock if it is null.")]
+    [SerializeField] private TowelDipController towelDip;
+    [SerializeField] private TowelCoverController towelCover;
+
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
 
@@ -77,7 +131,9 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private PressAlarmController pressAlarm;
 
     [Header("Extinguisher Animation")]
-    [Tooltip("The Animator on FireExtinguisher_ABC. Plays the six Blender clips.")]
+    [Tooltip("The Animator on FireExtinguisher_ABC. Plays the six Blender clips.\n\n" +
+             "Leave EMPTY in Kitchen — there is no extinguisher there, and the " +
+             "null guard below lets WCTL steps past it so the dip still plays.")]
     [SerializeField] private Animator extinguisherAnimator;
 
     [Tooltip("Clip state names as they appear in the Animator Controller.")]
@@ -165,7 +221,7 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private bool relaxExtinguisherOnFireOut = true;
 
     [Header("Input Lockout (anti spam-click)")]
-    [Tooltip("How long the TPASS buttons stay locked after a WRONG tap.\n\n" +
+    [Tooltip("How long the step buttons stay locked after a WRONG tap.\n\n" +
              "The only real timer in this file. A wrong tap has no animation to " +
              "hang the unlock off, so it needs a genuine cooldown.\n\n" +
              "It complements the penalty clamp in RegisterWrongAction rather than " +
@@ -182,9 +238,11 @@ public class SimulationManager : MonoBehaviour
              "So the lockout is force-cleared after this many seconds and a warning " +
              "is logged naming the step. A missed unlock becomes a delay you can " +
              "find in the Console rather than a frozen simulation you cannot.\n\n" +
-             "The longest real step is Pull at about 0.9s. If you ever see the " +
-             "warning, do NOT raise this — find the missing unlock.")]
-    [SerializeField] private float maxStepLockout = 3f;
+             "RAISED FROM 3 TO 4 FOR KITCHEN: the towel dip runs about 2.9s, and a " +
+             "valve set below that would fire mid-dip and unlock the buttons early. " +
+             "If you ever see the warning, do NOT raise this further — find the " +
+             "missing unlock.")]
+    [SerializeField] private float maxStepLockout = 4f;
 
     // --- RUNTIME STATE ---
     private float timeRemaining;
@@ -200,7 +258,8 @@ public class SimulationManager : MonoBehaviour
     private Coroutine relaxRoutine;
 
     // TRUE while a step is still animating, or during a wrong-tap cooldown.
-    // TPASSButtonManager reads IsStepBusy and ignores taps while it is up.
+    // TPASSButtonManager and WCTLButtonManager both read IsStepBusy and
+    // ignore taps while it is up.
     private bool stepBusy = false;
     private float stepBusyStartedAt = 0f;
 
@@ -220,6 +279,13 @@ public class SimulationManager : MonoBehaviour
     public int TotalPenaltySeconds => totalPenaltySeconds;
 
     /// <summary>
+    /// The last step number in this environment's sequence. Exposed so an exit
+    /// trigger can check it is completing the real final step rather than a
+    /// hardcoded 8.
+    /// </summary>
+    public int MaxStep => maxStep;
+
+    /// <summary>
     /// TRUE while the previous step is still animating, or during a wrong-tap
     /// cooldown. Taps are IGNORED while this is up — not penalised. The player
     /// is early or flustered, not wrong.
@@ -234,6 +300,18 @@ public class SimulationManager : MonoBehaviour
             return;
         }
         Instance = this;
+
+        // A scene object saved before maxStep existed deserialises it as 0,
+        // and `currentStep < 0` is never true — the run would freeze on step 1
+        // with no error at all. Fall back to the TPASS length rather than
+        // shipping a simulation nobody can finish.
+        if (maxStep <= 0)
+        {
+            Debug.LogWarning("[SimulationManager] Max Step was 0 — falling back to 8. " +
+                             "Set it explicitly in the Inspector to match this " +
+                             "scene's step enum.");
+            maxStep = 8;
+        }
     }
 
     private void OnDestroy()
@@ -260,6 +338,18 @@ public class SimulationManager : MonoBehaviour
 
         // Kill any spray still running.
         if (sprayVFX != null) sprayVFX.Stop();
+
+        // KITCHEN — put the towel back in the hand and dry it out.
+        //
+        // Without this, a run abandoned mid-dip leaves the towel stuck in the
+        // sink pose AND the dip coroutine handle still set — so the next
+        // attempt's WET tap is silently refused by PlayDip's own guard. The
+        // button would appear to do nothing, with no error to follow.
+        //
+        // ResetToRest also calls through to dry the towel, so IsWet goes back
+        // to false and the Cover guard fires again on the replay.
+        if (towelDip != null) towelDip.ResetToRest();
+        if (towelCover != null) towelCover.ResetToRest();
 
         // CRITICAL — see the header note. Without this a replay inherits
         // HoseLayer and LeverLayer at weight 0 and moves nothing, silently.
@@ -367,14 +457,30 @@ public class SimulationManager : MonoBehaviour
 
     // -------------------------------------------------------
     // REGISTER CORRECT ACTION
+    //
+    // Two entry points, one body.
+    //
+    // The enum version is what Office and Classroom have always called, and
+    // its signature has not changed — SimulationInteractable and
+    // TPASSButtonManager need no edits.
+    //
+    // Kitchen calls the string version directly with KitchenStep.ToString(),
+    // because KitchenStep is a different type and there is no sensible cast
+    // between them. That is fine: the enum was only ever used as a string in
+    // here anyway.
     // -------------------------------------------------------
     public void RegisterCorrectAction(SimulationInteractable.SimStep step, string chosenAction)
+    {
+        RegisterCorrectAction(step.ToString(), chosenAction);
+    }
+
+    public void RegisterCorrectAction(string stepName, string chosenAction)
     {
         if (!simActive) return;
 
         stepResults.Add(new StepResult
         {
-            step_name = step.ToString(),
+            step_name = stepName,
             sub_step = null,
             chosen_action = chosenAction,
             was_correct = true,
@@ -383,22 +489,30 @@ public class SimulationManager : MonoBehaviour
 
         // FEEDBACK LOG: green row naming the completed step.
         if (ActionFeedbackManager.Instance != null)
-            ActionFeedbackManager.Instance.ShowCorrect(StepNames.Friendly(step.ToString()));
+            ActionFeedbackManager.Instance.ShowCorrect(StepNames.Friendly(stepName));
 
         // Lock BEFORE dispatching — some branches finish synchronously and
         // clear it again on the very same line.
         BeginStepLockout();
 
-        PlayClipForStep(step);
+        PlayClipForStep(stepName);
 
-        if (currentStep < 8)
+        // maxStep, not a hardcoded 8 — Kitchen's sequence is shorter.
+        if (currentStep < maxStep)
             currentStep++;
     }
 
     // -------------------------------------------------------
     // REGISTER WRONG ACTION
+    //
+    // Same two-entry-point pattern as above.
     // -------------------------------------------------------
     public void RegisterWrongAction(SimulationInteractable.SimStep step, string chosenAction, float timePenalty, string tip)
+    {
+        RegisterWrongAction(step.ToString(), chosenAction, timePenalty, tip);
+    }
+
+    public void RegisterWrongAction(string stepName, string chosenAction, float timePenalty, string tip)
     {
         if (!simActive) return;
 
@@ -417,7 +531,7 @@ public class SimulationManager : MonoBehaviour
 
         stepResults.Add(new StepResult
         {
-            step_name = step.ToString(),
+            step_name = stepName,
             sub_step = null,
             chosen_action = chosenAction,
             was_correct = false,
@@ -428,13 +542,16 @@ public class SimulationManager : MonoBehaviour
         // player should be doing, NOT the button they mis-tapped — it
         // guides them to the right next move rather than scolding.
         //
+        // useKitchenHints picks the table. With it false the returned line is
+        // byte-for-byte what Office and Classroom got before.
+        //
         // The DISPLAYED penalty is the full nominal one, not the clamped
         // figure. With 5s left, a 20s mistake still cost them 20 seconds'
         // worth of trouble; showing "-5s" understates it, and at 0 seconds
         // "-0s" would read as if wrong actions were free.
         if (ActionFeedbackManager.Instance != null)
             ActionFeedbackManager.Instance.ShowWrong(
-                StepNames.Hint(currentStep),
+                StepNames.Hint(currentStep, useKitchenHints),
                 Mathf.RoundToInt(timePenalty));
 
         // COOLDOWN. The clamp above stops the RECORDED penalty exceeding the
@@ -460,19 +577,22 @@ public class SimulationManager : MonoBehaviour
     // survives a rename or reorder — it only cares that the name contains
     // "Alarm", "Twist", "Pull", and so on.
     //
+    // That substring matching is also what lets Kitchen share this method:
+    // "SoundAlarm" and "GrabTowel" hit the same first two branches, and
+    // "WCTL_Wet" hits the Wet branch further down.
+    //
     // ORDER MATTERS. The alarm press is a HAND animation and does not use
     // extinguisherAnimator at all, so it must be dispatched BEFORE the
     // null guard below — otherwise a scene with no Animator assigned would
-    // silently swallow the press.
+    // silently swallow the press. WCTL steps are exempted from that guard
+    // for exactly the same reason.
     //
     // EVERY branch must end the lockout, either immediately or by handing
     // EndStepLockout into a callback. A branch that forgets leaves the
     // buttons dead until the Update() safety valve fires.
     // -------------------------------------------------------
-    private void PlayClipForStep(SimulationInteractable.SimStep step)
+    private void PlayClipForStep(string name)
     {
-        string name = step.ToString();
-
         // --- HAND ANIMATION (no extinguisher Animator involved) ---
         if (name.Contains("Alarm"))
         {
@@ -482,9 +602,9 @@ public class SimulationManager : MonoBehaviour
                 Debug.Log("[SimulationManager] Alarm press animation started.");
             }
 
-            // No lockout needed: the TPASS buttons are not visible on step 1,
-            // and the next action is a world tap on the extinguisher, which
-            // pressAlarm.ResetState() below already handles cleanly.
+            // No lockout needed: the step buttons are not visible on step 1,
+            // and the next action is a world tap on the extinguisher (or the
+            // towel), which pressAlarm.ResetState() below already handles.
             EndStepLockout();
             return;
         }
@@ -507,11 +627,17 @@ public class SimulationManager : MonoBehaviour
         }
 
         // --- EXTINGUISHER CLIPS from here down ---
-        if (extinguisherAnimator == null)
+        //
+        // WCTL steps are EXEMPT from this guard. Kitchen has no extinguisher
+        // and leaves extinguisherAnimator empty, so without the exemption
+        // every WCTL step would return right here — the towel dip would never
+        // play, and there would be no error to explain why.
+        //
+        // Everything below still null-checks the Animator through PlayClip
+        // and PlayHoseClip, so a WCTL step reaching a TPASS branch by
+        // accident is harmless rather than a crash.
+        if (extinguisherAnimator == null && !name.Contains("WCTL"))
         {
-            // No animator means no choreography to wait for. Without this
-            // clear, a scene with an unassigned Animator would lock every
-            // button until the safety valve fired.
             EndStepLockout();
             return;
         }
@@ -640,11 +766,63 @@ public class SimulationManager : MonoBehaviour
             // the flag honest and stops the safety valve firing a warning.
             EndStepLockout();
         }
+        else if (name.Contains("Wet"))
+        {
+            // KITCHEN — dip, soak, wring, lift. About 2.9 seconds.
+            //
+            // The dip OWNS its own duration, so it also owns the unlock:
+            // EndStepLockout is handed in as the completion callback rather
+            // than fired from a timer here. Same rule that fixed the
+            // Pull -> Aim bug — one owner per behaviour, and no duration
+            // duplicated in a second file where the two could drift apart.
+            //
+            // TowelDipController also calls TowelWetnessController.SetWet()
+            // partway through the soak, which is what unblocks the Cover
+            // button. So this one line drives the choreography, the material
+            // change AND the step gate.
+            if (towelDip != null)
+            {
+                towelDip.PlayDip(EndStepLockout);
+            }
+            else
+            {
+                Debug.LogWarning("[SimulationManager] Wet step reached with no " +
+                                 "TowelDipController assigned — skipping the dip. " +
+                                 "The towel will never become wet, so the Cover " +
+                                 "button will stay blocked.");
+                EndStepLockout();
+            }
+
+        }
+        else if (name.Contains("Cover"))
+        {
+            if (towelCover != null)
+            {
+                towelCover.PlayCover(
+                    onContact: () => { if (fireController != null) fireController.ExtinguishFire(null); },
+                    onComplete: EndStepLockout);
+            }
+            else
+            {
+                if (fireController != null) fireController.ExtinguishFire(null);
+                EndStepLockout();
+            }
+        }
+
+
         else
         {
-            // Evacuate, or a step with no animation. Nothing to wait for.
+            // Evacuate, WCTL Cover, WCTL Turn Off, or any step with no
+            // animation yet. Nothing to wait for.
+            //
+            // When Cover and Turn Off get their choreography, add branches
+            // ABOVE this one — anything after a catch-all else is
+            // unreachable — and make each new branch clear the lockout
+            // itself, either directly or through a completion callback.
             EndStepLockout();
         }
+
+
     }
 
     // -------------------------------------------------------
@@ -872,7 +1050,14 @@ public class SimulationManager : MonoBehaviour
         //
         // Harmless when the fire already went out: Stop() on a stopped
         // system and a relax fade restarting from 0 both do nothing.
+        // Harmless in Kitchen too, where every reference here is null.
         OnFireIsOut();
+
+        // KITCHEN — same reasoning, for the towel. The timer can expire
+        // mid-dip, leaving the towel frozen in the sink pose over the results
+        // screen with the coroutine handle still set into the next run.
+        if (towelDip != null) towelDip.ResetToRest();
+               if (towelCover != null) towelCover.ResetToRest();
 
         // Clear the lockout so a run that ended mid-choreography does not
         // leave the flag set for whatever comes next.
