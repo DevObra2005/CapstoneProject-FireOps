@@ -4,75 +4,74 @@ using UnityEngine;
 // -------------------------------------------------------
 // TowelDipController — the Wet step's choreography.
 //
-// Moves a STATIC towel mesh through a dip, soak, wring and lift using
-// transform lerps. No bone rig, no IK, no Animator layers.
+// Moves the towel through a dip, soak, wring and lift using transform lerps
+// in LOCAL space under TowelAnchor.
 //
-// WHY NO RIG:
-// The dip is the towel MOVING, not the towel DEFORMING. A bone rig would buy
-// cloth bend on an object that is on screen for under three seconds at arm's
-// length, at the cost of the entire Blender rig pipeline — weight painting,
-// orphan-bone hunting, IK targets, masked layers. Everything that cost days on
-// the extinguisher.
-//
-// This file is the same coroutine pattern as RelaxRoutine in
-// SimulationManager. Nothing new to debug.
+// The four realism rules — easing rather than linear, an arc rather than a
+// straight line, rotation that leads the move, a settle rather than a stop —
+// are unchanged and documented at each site below. The wring adds a fifth: an
+// oscillation whose amplitude DECAYS, which reads as effort running out
+// rather than as a mechanism.
 //
 // -------------------------------------------------------
-// WHAT MAKES IT READ AS REAL RATHER THAN AS A LERP
+// THIS FILE MOVES THE TOWEL. THE BONES CHANGE ITS SHAPE.
 //
-// 1. EASING, NOT LINEAR. A straight Lerp moves at constant speed and stops
-//    dead — the single clearest tell that something is code-driven. SmoothStep
-//    accelerates out of rest and decelerates into the target, which is how an
-//    arm actually moves.
+// The towel is rigged now — five bones, three clips. The division of labour:
 //
-// 2. AN ARC, NOT A STRAIGHT LINE. A hand lowering a cloth swings through a
-//    curve because it is pivoting at the elbow and shoulder. A sine bulge
-//    perpendicular to the travel gives that for one line of maths. Straight-
-//    line motion looks like a machine on rails.
+//   THIS FILE owns TRAVEL:  where the towel sits relative to the hand, its
+//                           rotation, the arc, the wring oscillation.
+//   THE ANIMATOR owns SHAPE: the cloth's own bend, currently Towel_Idle's
+//                           slow pendulum sway throughout the dip.
 //
-// 3. ROTATION THAT LEADS THE MOVE. The wrist turns as the arm lowers, and it
-//    turns slightly AHEAD of the position — real limbs orient toward where
-//    they are going. Rotating on a slightly faster curve than the position
-//    sells this.
-//
-// 4. A SETTLE, NOT A STOP. Coming back to rest, the towel overshoots a few
-//    millimetres and eases back. Nothing in a hand stops perfectly still on
-//    the first attempt.
-//
-// The wring adds a fifth: an oscillation whose amplitude DECAYS. A constant
-// twist reads as a mechanism; a fading one reads as effort running out.
+// They do not conflict, because they write different things: this writes the
+// OBJECT's localPosition and localRotation, the Animator writes the BONES'
+// local rotations underneath it. The sway continues through the whole dip,
+// which is correct — a towel does not go rigid because your arm is moving.
 //
 // -------------------------------------------------------
-// SETTING THE TWO POSES
+// THE REST POSE IS CAPTURED LAZILY. THIS IS NOT AN OPTIMISATION.
 //
-// restLocal* is read automatically from wherever you park the towel in the
-// Hierarchy at edit time — that IS the held pose, so it never needs typing.
+// It used to be cached in Start(). That worked when a hidden towel lived
+// under TowelAnchor from scene load, because Start() ran with the towel
+// already at its held pose.
 //
-// For the dip pose: enter Play mode, tick `previewDipPose`, drag the towel in
-// the Scene view until it sits in the sink, then copy its local Position and
-// Rotation into the dip fields. Untick. This avoids guessing numbers.
+// It broke the moment the towel became a SINGLE object that starts draped on
+// the timba and is flown into the hand by TowelGrab. Start() now runs while
+// the towel is still on the bucket, so restLocalPosition would hold the
+// TIMBA's coordinates — and every dip would return the towel to a point
+// relative to the anchor that corresponds to where the bucket was. Parented
+// to the camera. Drifting with the player's head.
+//
+// No error. No warning. Just a towel that ends every dip somewhere absurd.
+//
+// Capturing on the first PlayDip call fixes it by construction: by then the
+// grab has completed, the towel is parented to TowelAnchor at (0,0,0), and
+// whatever it is at IS the held pose.
 // -------------------------------------------------------
 
 public class TowelDipController : MonoBehaviour
 {
     [Header("What Moves")]
-    [Tooltip("The towel transform. Should be parented under TowelAnchor on the " +
-             "PlayerCamera, exactly like ExtinguisherAnchor.\n\n" +
+    [Tooltip("The towel transform. By the time the Wet step runs it will be " +
+             "parented under TowelAnchor on the PlayerCamera, flown there by " +
+             "TowelGrab.\n\n" +
              "Leave empty to move THIS object.")]
     [SerializeField] private Transform towel;
 
     [Header("Dip Pose (local to the anchor)")]
-    [Tooltip("Where the towel sits when it is under the tap. Use previewDipPose " +
-             "below to find these numbers rather than guessing them.")]
+    [Tooltip("Where the towel sits when it is down in the timba. Use " +
+             "previewDipPose below to find these numbers rather than guessing.")]
     [SerializeField] private Vector3 dipLocalPosition = new Vector3(0f, -0.35f, 0.45f);
 
-    [Tooltip("Rotation under the tap. Tilting the towel forward reads as the " +
-             "wrist turning to hold it under running water.")]
+    [Tooltip("Rotation in the water. Tilting the towel forward reads as the " +
+             "wrists turning to push it under.")]
     [SerializeField] private Vector3 dipLocalEuler = new Vector3(35f, 0f, 0f);
 
-    [Tooltip("PLAY MODE ONLY. Snaps the towel to the dip pose so you can drag it " +
-             "into place in the Scene view, then copy the numbers up. Untick " +
-             "before testing the step.")]
+    [Tooltip("PLAY MODE ONLY, AND ONLY AFTER THE GRAB. Snaps the towel to the " +
+             "dip pose so you can drag it into place in the Scene view, then " +
+             "copy the numbers up. Untick before testing the step.\n\n" +
+             "Does nothing before the grab, because the towel is not yet " +
+             "parented to the anchor and local coordinates would be meaningless.")]
     [SerializeField] private bool previewDipPose = false;
 
     [Header("Motion Shape")]
@@ -81,37 +80,41 @@ public class TowelDipController : MonoBehaviour
              "lift on rails. 0.12 is a gentle swing; 0 is a straight line.")]
     [SerializeField] private float arcHeight = 0.12f;
 
-    [Tooltip("Which way the arc bows, in the anchor's local space. Right (1,0,0) " +
-             "reads as the elbow swinging out; up (0,1,0) reads as lifting over " +
-             "the sink edge.")]
+    [Tooltip("Which way the arc bows, in the anchor's local space. Right " +
+             "(1,0,0) reads as the elbows swinging out; up (0,1,0) reads as " +
+             "lifting over the bucket's edge.")]
     [SerializeField] private Vector3 arcDirection = new Vector3(1f, 0.3f, 0f);
 
-    [Tooltip("How far AHEAD of the position the rotation runs, 0-0.4. Real limbs " +
-             "orient toward where they are going before they arrive. 0.15 is " +
-             "subtle; above 0.3 starts to look like the wrist is broken.")]
+    [Tooltip("How far AHEAD of the position the rotation runs, 0-0.4. Real " +
+             "limbs orient toward where they are going before they arrive. " +
+             "0.15 is subtle; above 0.3 starts to look like a broken wrist.")]
     [Range(0f, 0.4f)]
     [SerializeField] private float rotationLead = 0.15f;
 
     [Header("Timing (seconds)")]
-    [Tooltip("Lowering the towel to the tap.")]
+    [Tooltip("Lowering the towel into the timba.")]
     [SerializeField] private float lowerDuration = 0.55f;
 
-    [Tooltip("Held under running water. This is where the fabric darkens, so it " +
-             "needs to last long enough to SEE — under 0.6 and the change reads " +
-             "as a glitch rather than as soaking.")]
+    [Tooltip("Held under the water. This is where the fabric darkens, so it " +
+             "needs to last long enough to SEE — under 0.6 and the change " +
+             "reads as a glitch rather than as soaking.\n\n" +
+             "NOTE: TowelWetnessController has its own soakDuration for the " +
+             "colour lerp. Set that one to about 0.65 so the darkening " +
+             "finishes as the towel leaves the water, rather than continuing " +
+             "through the wring.")]
     [SerializeField] private float soakDuration = 0.9f;
 
     [Tooltip("Wringing out the excess. BFP-accurate and not decorative: a " +
-             "dripping cloth puts water into hot oil, which flashes to steam and " +
-             "sprays burning oil outward.")]
+             "dripping cloth puts water into hot oil, which flashes to steam " +
+             "and sprays burning oil outward.")]
     [SerializeField] private float wringDuration = 1.0f;
 
     [Tooltip("Lifting back to the ready pose.")]
     [SerializeField] private float liftDuration = 0.45f;
 
     [Header("Wring Motion")]
-    [Tooltip("How far the towel twists each way, in degrees. 40 reads as effort; " +
-             "much more and it looks like it is being unscrewed.")]
+    [Tooltip("How far the towel twists each way, in degrees. 40 reads as " +
+             "effort; much more and it looks like it is being unscrewed.")]
     [SerializeField] private float wringAngle = 40f;
 
     [Tooltip("How many full twists back and forth. Two is enough to read as " +
@@ -123,25 +126,26 @@ public class TowelDipController : MonoBehaviour
     [SerializeField] private float wringPull = 0.04f;
 
     [Header("Settle On Return")]
-    [Tooltip("How far the towel overshoots the rest pose before easing back, in " +
-             "metres. Nothing held in a hand stops perfectly still on the first " +
-             "attempt. 0.02 is barely conscious but the absence is noticeable.")]
+    [Tooltip("How far the towel overshoots the rest pose before easing back, " +
+             "in metres. Nothing held in a hand stops perfectly still on the " +
+             "first attempt. 0.02 is barely conscious but the absence is " +
+             "noticeable.")]
     [SerializeField] private float settleOvershoot = 0.02f;
 
     [SerializeField] private float settleDuration = 0.18f;
 
     [Header("Effects")]
-    [Tooltip("Faucet water stream. Played for the lower + soak phases, stopped " +
-             "when the wring begins — you take the cloth out of the water before " +
-             "you wring it.")]
+    [Tooltip("Water disturbance in the timba. Played for the lower + soak " +
+             "phases, stopped when the wring begins — the cloth comes out of " +
+             "the water before it is wrung.")]
     [SerializeField] private ParticleSystem faucetWater;
 
     [Tooltip("Drips falling off the towel during the wring. Optional.")]
     [SerializeField] private ParticleSystem wringDrips;
 
     [Tooltip("Darkens the towel and flips IsWet. The soak is timed to start " +
-             "partway through the water phase, so the fabric changes WHILE the " +
-             "stream is on it rather than before or after.")]
+             "partway through the water phase, so the fabric changes WHILE it " +
+             "is submerged rather than before or after.")]
     [SerializeField] private TowelWetnessController wetness;
 
     [Header("Audio (optional)")]
@@ -149,10 +153,11 @@ public class TowelDipController : MonoBehaviour
     [SerializeField] private AudioClip runningWaterClip;
     [SerializeField] private AudioClip wringClip;
 
-    // Cached at Start — wherever the towel is parked in the Hierarchy IS the
-    // held pose, so it never needs typing into the Inspector.
+    // Captured on the FIRST PlayDip call, not in Start. See the header — this
+    // is the single most important line in the file to get right.
     private Vector3 restLocalPosition;
     private Quaternion restLocalRotation;
+    private bool restCaptured = false;
 
     private Coroutine dipRoutine;
     private bool hasRun = false;
@@ -167,16 +172,37 @@ public class TowelDipController : MonoBehaviour
     private void Start()
     {
         if (towel == null) towel = transform;
+        // NO rest-pose caching here. See the header.
+    }
+
+    // -------------------------------------------------------
+    // Captures the held pose the first time it is needed. By then TowelGrab
+    // has parented the towel to TowelAnchor and zeroed its local transform, so
+    // whatever it reads IS correct — there is nothing to get wrong.
+    //
+    // Guarded by a bool rather than a null check, because Vector3.zero is a
+    // perfectly valid rest pose and in fact the expected one.
+    // -------------------------------------------------------
+    private void CaptureRestIfNeeded()
+    {
+        if (restCaptured) return;
 
         restLocalPosition = towel.localPosition;
         restLocalRotation = towel.localRotation;
+        restCaptured = true;
+
+        Debug.Log($"[TowelDip] Rest pose captured at {restLocalPosition}.");
     }
 
     private void Update()
     {
         // Authoring aid only. Snaps to the dip pose so it can be dragged into
         // place in the Scene view, then the numbers copied up.
-        if (previewDipPose && !IsDipping && Application.isPlaying)
+        //
+        // Requires the rest pose to already exist, which means the grab must
+        // have happened. Before that, local coordinates are relative to
+        // whatever the towel is parented to on the timba and mean nothing.
+        if (previewDipPose && !IsDipping && Application.isPlaying && restCaptured)
         {
             towel.localPosition = dipLocalPosition;
             towel.localRotation = Quaternion.Euler(dipLocalEuler);
@@ -202,6 +228,10 @@ public class TowelDipController : MonoBehaviour
             return;
         }
 
+        if (towel == null) towel = transform;
+
+        CaptureRestIfNeeded();
+
         dipRoutine = StartCoroutine(DipRoutine(onComplete));
     }
 
@@ -215,9 +245,8 @@ public class TowelDipController : MonoBehaviour
         Vector3 arc = arcDirection.normalized * arcHeight;
 
         // ---- 1. LOWER ----
-        // Water starts BEFORE the towel arrives. A tap that switches on at the
-        // exact moment the cloth reaches it reads as a trigger; one already
-        // running reads as a tap someone opened.
+        // Water disturbance starts BEFORE the towel arrives, so the surface is
+        // already moving rather than reacting on contact like a trigger.
         PlayWater(true);
 
         yield return MoveArc(restLocalPosition, dipPos,
@@ -225,8 +254,8 @@ public class TowelDipController : MonoBehaviour
                              arc, lowerDuration);
 
         // ---- 2. SOAK ----
-        // The fabric darkens here, under the stream. Started slightly after
-        // arrival so there is a beat of water hitting dry cloth first.
+        // The fabric darkens here, under the water. Started slightly after
+        // arrival so there is a beat of dry cloth breaking the surface first.
         yield return new WaitForSeconds(soakDuration * 0.25f);
 
         if (wetness != null) wetness.SetWet();
@@ -234,9 +263,9 @@ public class TowelDipController : MonoBehaviour
         yield return new WaitForSeconds(soakDuration * 0.75f);
 
         // ---- 3. WRING ----
-        // Water off first. You take the cloth OUT of the stream before you
-        // wring it — leaving the tap running through the wring would undo the
-        // point of the step.
+        // The cloth comes OUT of the water before it is wrung. Leaving the
+        // water effect running through the wring would undo the point of the
+        // step.
         PlayWater(false);
 
         if (wringDrips != null) wringDrips.Play();
@@ -277,7 +306,7 @@ public class TowelDipController : MonoBehaviour
     // ARC MOVE
     //
     // Position eases along a curved path; rotation eases on a slightly FASTER
-    // curve so the wrist leads the arm. Both use SmoothStep rather than a
+    // curve so the wrists lead the arms. Both use SmoothStep rather than a
     // straight Lerp — constant-speed motion that stops dead is the clearest
     // tell that something is code-driven rather than performed.
     // -------------------------------------------------------
@@ -325,8 +354,9 @@ public class TowelDipController : MonoBehaviour
     // A twist oscillation whose amplitude DECAYS, plus a downward pull.
     //
     // The decay is what makes it read as a person rather than a mechanism: a
-    // constant-amplitude twist looks motorised, while one that fades looks like
-    // effort running out. Same reason the arc matters more than the distance.
+    // constant-amplitude twist looks motorised, while one that fades looks
+    // like effort running out. Same reason the arc matters more than the
+    // distance.
     // -------------------------------------------------------
     private IEnumerator WringRoutine(Vector3 dipPos, Quaternion dipRot)
     {
@@ -384,13 +414,20 @@ public class TowelDipController : MonoBehaviour
     // -------------------------------------------------------
     // RESET FOR A REPLAY
     //
-    // Call this from wherever the Kitchen run resets, alongside
-    // TowelWetnessController.ResetToDry().
+    // Call from wherever the Kitchen run resets, alongside
+    // TowelGrab.ResetToTimba(), TowelWetnessController.ResetToDry(),
+    // TowelCoverController.ResetToRest(), KitchenInteractable.ResetForReplay()
+    // and WCTLButtonManager.ResetForReplay().
     //
-    // Without it, a run abandoned mid-dip leaves the towel stuck in the sink
+    // Without it, a run abandoned mid-dip leaves the towel stuck in the bucket
     // pose on the next attempt — and the coroutine handle still set, so
     // PlayDip's guard would refuse to run the step at all. The player would
     // tap WET and nothing would happen, with no error.
+    //
+    // restCaptured is cleared too, because TowelGrab is about to put the towel
+    // back on the timba. Keeping the old capture would be harmless in practice
+    // — the held pose is the same every run — but a stale cache that happens
+    // to be right is a bug waiting for the day the anchor moves.
     // -------------------------------------------------------
     public void ResetToRest()
     {
@@ -403,11 +440,14 @@ public class TowelDipController : MonoBehaviour
         PlayWater(false);
         if (wringDrips != null) wringDrips.Stop();
 
-        if (towel != null && hasRun)
+        if (towel != null && hasRun && restCaptured)
         {
             towel.localPosition = restLocalPosition;
             towel.localRotation = restLocalRotation;
         }
+
+        restCaptured = false;
+        previewDipPose = false;
 
         Debug.Log("[TowelDip] Reset to rest pose.");
     }

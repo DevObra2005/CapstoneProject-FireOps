@@ -26,7 +26,7 @@ using UnityEngine.UI;
 // * THE POSITION GATE IS PER-BUTTON, NOT GLOBAL.
 //   Office only gates Squeeze, always against the fire, so one fireTarget
 //   field was enough. Kitchen gates three separate steps against three
-//   different objects: Wet at the sink, Cover at the flame, Turn Off at the
+//   different objects: Wet at the timba, Cover at the flame, Turn Off at the
 //   tank valve. So the target, the ranges and the hints all live on the
 //   BUTTON, not on the manager.
 //
@@ -46,6 +46,19 @@ using UnityEngine.UI;
 //   catches fire. That is the single most dangerous thing a trainee can do
 //   in this scenario, so it is charged at full penalty like any other wrong
 //   action. Different category, different cost.
+//
+// -------------------------------------------------------
+// STEP NUMBERS - READ THIS BEFORE CHANGING showFromStep
+//
+// KitchenStep runs 1..5:
+//   1 GrabTowel, 2 WCTL_Wet, 3 WCTL_Cover, 4 WCTL_TurnOff, 5 Evacuate
+//
+// So the three buttons live from 2 to 4. Grab is a world tap on the draped
+// towel; Evacuate is the exit door. Neither is a button.
+//
+// These defaults are derived from the enum, not typed independently. If the
+// enum ever changes, change them here in the same commit - a mismatch does
+// not error, it just hides the button the player needs.
 // -------------------------------------------------------
 
 public class WCTLButtonManager : MonoBehaviour
@@ -62,18 +75,18 @@ public class WCTLButtonManager : MonoBehaviour
 
         [Header("Position Gate (leave target empty to disable)")]
         [Tooltip("What the player must be standing near for this step to " +
-                 "register. Sink for Wet, the flame for Cover, the tank valve " +
+                 "register. Timba for Wet, the flame for Cover, the tank valve " +
                  "for Turn Off.\n\n" +
                  "EMPTY = no gate. The step works from anywhere.")]
         public Transform positionTarget;
 
         [Tooltip("Closer than this and the player is warned to step back. " +
                  "For Cover this matters - you do not stand on top of a gas " +
-                 "flame. For Wet at a sink, a small value is fine.")]
+                 "flame. For Wet at the timba, a small value is fine.")]
         public float tooCloseDistance = 0.4f;
 
         [Tooltip("Further than this and the action makes no sense - you cannot " +
-                 "reach the tap, the flame or the valve from across the room.")]
+                 "reach the bucket, the flame or the valve from across the room.")]
         public float tooFarDistance = 2.5f;
 
         [Tooltip("Also require the player to be LOOKING at the target, not just " +
@@ -95,11 +108,18 @@ public class WCTLButtonManager : MonoBehaviour
     [SerializeField] private float timePenalty = 20f;
 
     [Header("Visibility")]
-    [Tooltip("Kitchen steps: 1 Alarm, 2 Grab Towel, 3 Wet, 4 Cover, " +
-             "5 Turn Off, 6 Evacuate.\n\n" +
-             "So the buttons live from 3 to 5.")]
-    [SerializeField] private int showFromStep = 3;
-    [SerializeField] private int showToStep = 5;
+    [Tooltip("KitchenStep: 1 GrabTowel, 2 Wet, 3 Cover, 4 TurnOff, 5 Evacuate.\n\n" +
+             "So the buttons live from 2 to 4.")]
+    [SerializeField] private int showFromStep = (int)KitchenStep.WCTL_Wet;
+    [SerializeField] private int showToStep = (int)KitchenStep.WCTL_TurnOff;
+
+    [Tooltip("Re-shuffle every time a step completes, instead of once when the " +
+             "buttons first appear.\n\n" +
+             "OFF is the safer default: positions stay put for the whole run, " +
+             "so the player is not re-hunting labels mid-emergency. Turn ON " +
+             "only if testing shows people are memorising positions within a " +
+             "single attempt.")]
+    [SerializeField] private bool reshuffleEachStep = false;
 
     [Header("Position Check")]
     [Tooltip("Master switch for ALL position gates. Untick while testing the " +
@@ -128,43 +148,74 @@ public class WCTLButtonManager : MonoBehaviour
              "it is charged at full penalty, not given as a free hint.")]
     [SerializeField]
     private string dryTowelTip =
-        "A dry cloth will catch fire. Wet it at the sink first.";
+        "A dry cloth will catch fire. Wet it in the timba first.";
 
     private CanvasGroup canvasGroup;
     private bool wasVisible = false;
+    private int lastShuffledStep = -1;
+
+    // Cached once. SimulationMode is written before the scene loads and never
+    // changes during a run, so re-reading PlayerPrefs every frame in Update
+    // buys nothing.
+    private bool isSimulationMode;
 
     private void Start()
     {
+        isSimulationMode = PlayerPrefs.GetInt("SimulationMode", 0) == 1;
+
         canvasGroup = GetComponent<CanvasGroup>();
         if (canvasGroup == null)
             canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
+        WireButtons();
+        SetVisible(false);
+    }
+
+    // -------------------------------------------------------
+    // Null-guarded on purpose. An unassigned Button slot in the Inspector used
+    // to throw at Start and take the WHOLE manager down with it - all three
+    // buttons dead, no visible cause. A missing slot should cost you one
+    // button and a warning, not the step system.
+    // -------------------------------------------------------
+    private void WireButtons()
+    {
+        if (wctlButtons == null) return;
+
         foreach (WCTLButton entry in wctlButtons)
         {
+            if (entry == null || entry.button == null)
+            {
+                Debug.LogWarning("[WCTL] A button slot is empty in the Inspector - skipped.");
+                continue;
+            }
+
             WCTLButton captured = entry;
             captured.button.onClick.AddListener(() => OnButtonTapped(captured));
         }
-
-        SetVisible(false);
     }
 
     private void Update()
     {
+        if (!isSimulationMode) return;
         if (SimulationManager.Instance == null) return;
 
         int currentStep = SimulationManager.Instance.CurrentStep;
-
-        bool shouldShow = (currentStep >= showFromStep && currentStep <= showToStep)
-                          && PlayerPrefs.GetInt("SimulationMode", 0) == 1;
+        bool shouldShow = currentStep >= showFromStep && currentStep <= showToStep;
 
         if (shouldShow && !wasVisible)
         {
             SetVisible(true);
             ShuffleButtonPositions();
+            lastShuffledStep = currentStep;
         }
         else if (!shouldShow && wasVisible)
         {
             SetVisible(false);
+        }
+        else if (shouldShow && reshuffleEachStep && currentStep != lastShuffledStep)
+        {
+            ShuffleButtonPositions();
+            lastShuffledStep = currentStep;
         }
 
         wasVisible = shouldShow;
@@ -179,15 +230,45 @@ public class WCTLButtonManager : MonoBehaviour
         canvasGroup.blocksRaycasts = visible;
     }
 
-    // Shuffled so the player reads the labels rather than memorising
-    // "the answer is always the second button".
+    // -------------------------------------------------------
+    // SHUFFLE
+    //
+    // Shuffled so the player reads the labels rather than memorising "the
+    // answer is always the second button".
+    //
+    // THE OLD VERSION WAS NOT A SHUFFLE. It looped the array calling
+    // SetSiblingIndex(random) directly on each button. SetSiblingIndex MOVES a
+    // child and shifts everything after it - it does not SWAP. So each call
+    // disturbed the placements made by every previous call, index 0 was never
+    // moved at all, and some orderings came up far more often than others.
+    //
+    // The fix is to shuffle a list of INDICES with a real Fisher-Yates, then
+    // apply the finished permutation in ascending order. Assigning sibling
+    // index 0, then 1, then 2 lands each button exactly where intended,
+    // because every earlier assignment is already settled.
+    // -------------------------------------------------------
     private void ShuffleButtonPositions()
     {
+        if (wctlButtons == null || wctlButtons.Length < 2) return;
+
         int count = wctlButtons.Length;
+
+        int[] order = new int[count];
+        for (int i = 0; i < count; i++) order[i] = i;
+
         for (int i = count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
-            wctlButtons[i].button.transform.SetSiblingIndex(j);
+            int temp = order[i];
+            order[i] = order[j];
+            order[j] = temp;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            WCTLButton entry = wctlButtons[order[i]];
+            if (entry != null && entry.button != null)
+                entry.button.transform.SetSiblingIndex(i);
         }
     }
 
@@ -196,7 +277,7 @@ public class WCTLButtonManager : MonoBehaviour
     // -------------------------------------------------------
     private void OnButtonTapped(WCTLButton tapped)
     {
-        if (PlayerPrefs.GetInt("SimulationMode", 0) != 1) return;
+        if (!isSimulationMode) return;
         if (SimulationManager.Instance == null) return;
 
         // ---- STILL ANIMATING (anti-spam) ----
@@ -220,10 +301,8 @@ public class WCTLButtonManager : MonoBehaviour
             Debug.Log($"[WCTL] Wrong! Tapped {tapped.step} but step is {currentStep}. " +
                       $"Penalty -{timePenalty}s");
 
-            KitchenStep expectedStep = (KitchenStep)currentStep;
-
             SimulationManager.Instance.RegisterWrongAction(
-                expectedStep.ToString(),
+                DescribeStep(currentStep),
                 tapped.step.ToString(),
                 timePenalty,
                 tapped.wrongTip
@@ -274,6 +353,19 @@ public class WCTLButtonManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
+    // Casting a raw int straight to KitchenStep produces a garbage enum value
+    // when the number is outside 1..5, and ToString() on a garbage value
+    // returns the NUMBER as text. That would send "7" to Laravel as a step
+    // name and silently corrupt the attempt record. Range-check first.
+    // -------------------------------------------------------
+    private string DescribeStep(int step)
+    {
+        return System.Enum.IsDefined(typeof(KitchenStep), step)
+            ? ((KitchenStep)step).ToString()
+            : $"Step{step}";
+    }
+
+    // -------------------------------------------------------
     // POSITION CHECK
     //
     // Returns NULL when the player is standing correctly, or the hint to show
@@ -314,5 +406,39 @@ public class WCTLButtonManager : MonoBehaviour
         if (angle > facingAngle) return entry.notFacingHint;
 
         return null;   // standing correctly
+    }
+
+    // -------------------------------------------------------
+    // RESET FOR A REPLAY
+    //
+    // Call from wherever the Kitchen run resets, alongside
+    // TowelWetnessController.ResetToDry(), TowelDipController.ResetToRest()
+    // and KitchenInteractable.ResetForReplay().
+    //
+    // THIS WAS MISSING ENTIRELY. Every correct tap sets
+    // button.interactable = false, and nothing ever set it back. A second
+    // attempt in the same session started with all three WCTL buttons greyed
+    // out - the player could not tap Wet, could not advance past step 2, and
+    // there was no error to explain why. The run simply ended on the timer.
+    //
+    // Every script that mutates run state needs one of these. If you add a
+    // fourth, add its reset in the same commit.
+    // -------------------------------------------------------
+    public void ResetForReplay()
+    {
+        if (wctlButtons != null)
+        {
+            foreach (WCTLButton entry in wctlButtons)
+            {
+                if (entry != null && entry.button != null)
+                    entry.button.interactable = true;
+            }
+        }
+
+        wasVisible = false;
+        lastShuffledStep = -1;
+        SetVisible(false);
+
+        Debug.Log("[WCTL] Buttons reset for replay.");
     }
 }
