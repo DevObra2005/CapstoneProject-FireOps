@@ -23,7 +23,7 @@ using UnityEngine.Events;
 //   1 Grab Towel     -> TowelGrab: flies from the sink into both hands
 //   2 WCTL Wet       -> TowelDipController: dip, soak, wring, lift
 //   3 WCTL Cover     -> TowelCoverController: throw, contact, settle
-//   4 WCTL Turn Off  -> no choreography yet
+//   4 WCTL Turn Off  -> KitchenValveController: reach, turn, release
 //   5 Evacuate       -> completed by Door
 //
 // THERE IS NO SOUND ALARM STEP IN KITCHEN. This is a home scenario, not a
@@ -98,12 +98,12 @@ using UnityEngine.Events;
 // * HANDS NEED NO CLIPS. Grip_Pin is parented to Pin, Grip_Nozzle to
 //   a hose bone. Those are the IK targets — move the part and the
 //   hand follows for free. One system animates the prop; IK keeps
-//   the hands attached. Kitchen uses the same trick: GripPoint_R and
-//   GripPoint_L are parented to Towel_A1 and Towel_B1, so the hands
-//   ride both the transform lerps AND the bone animation.
+//   the hands attached. Kitchen uses the same trick THREE times:
+//   GripPoint_R and GripPoint_L under Towel_A1 and Towel_B1, and
+//   ValveGrip under Regulator_Valve.
 //
 // * EVERY SCRIPT THAT MUTATES RUN STATE NEEDS ITS OWN RESET, AND
-//   EVERY ONE MUST BE CALLED. Kitchen has SIX. See ResetKitchenTowel
+//   EVERY ONE MUST BE CALLED. Kitchen has SEVEN. See ResetKitchenState
 //   below — the failure mode for each is silent, and three of them
 //   stall the run outright on the second attempt.
 // -------------------------------------------------------
@@ -138,8 +138,8 @@ public class SimulationManager : MonoBehaviour
     [Tooltip("KITCHEN ONLY. Leave every field in this block EMPTY in Office " +
              "and Classroom — every call to them is null-guarded, so an empty " +
              "slot costs nothing there.\n\n" +
-             "In KITCHEN, all six must be assigned. Five of them exist purely " +
-             "so a REPLAY works: see ResetKitchenTowel in this file for what " +
+             "In KITCHEN, all seven must be assigned. Five of them exist purely " +
+             "so a REPLAY works: see ResetKitchenState in this file for what " +
              "breaks, silently, when one is missed.")]
     [SerializeField] private TowelDipController towelDip;
 
@@ -165,6 +165,17 @@ public class SimulationManager : MonoBehaviour
              "nothing ever put them back — attempt two used to start with all " +
              "three dead.")]
     [SerializeField] private WCTLButtonManager wctlButtons;
+
+    [Header("Kitchen — Turn Off Step")]
+    [Tooltip("Reaches the RIGHT hand to the LPG regulator, turns the valve " +
+             "shut, and releases. Sits on LPG_Assembly.\n\n" +
+             "Its reset re-opens the valve. Without it a second attempt starts " +
+             "with the gas already off — the step still registers and still " +
+             "logs correct, but the player turns a wheel that is visibly " +
+             "already closed, and the one action that actually ends a gas fire " +
+             "stops being demonstrated.\n\n" +
+             "Leave EMPTY in Office and Classroom.")]
+    [SerializeField] private KitchenValveController valveTurn;
 
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
@@ -284,9 +295,10 @@ public class SimulationManager : MonoBehaviour
              "So the lockout is force-cleared after this many seconds and a warning " +
              "is logged naming the step. A missed unlock becomes a delay you can " +
              "find in the Console rather than a frozen simulation you cannot.\n\n" +
-             "RAISED FROM 3 TO 4 FOR KITCHEN: the towel dip runs about 2.9s, and a " +
-             "valve set below that would fire mid-dip and unlock the buttons early. " +
-             "The Cover step runs about 1.65s, comfortably inside.\n\n" +
+             "KITCHEN NEEDS 4 AT MINIMUM. The towel dip runs about 2.9s, and a " +
+             "valve set to 3 fires with a tenth of a second to spare — one frame " +
+             "hitch and it trips mid-dip. The Cover step runs about 1.65s and the " +
+             "valve turn about 1.75s, both comfortably inside.\n\n" +
              "If you ever see the warning, do NOT raise this further — find the " +
              "missing unlock.")]
     [SerializeField] private float maxStepLockout = 4f;
@@ -373,7 +385,7 @@ public class SimulationManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // KITCHEN RESET — all six, in dependency order.
+    // KITCHEN RESET — all seven, in dependency order.
     //
     // Every script that MUTATES run state needs its own reset, and every one
     // must be called. Each failure below is SILENT — no error, no warning,
@@ -389,6 +401,13 @@ public class SimulationManager : MonoBehaviour
     //                      Cover and the entire W of WCTL stops being taught.
     //                      The most damaging one, because the run still
     //                      "works" — it just teaches the wrong thing.
+    //
+    //   valveTurn          the gas is already off. Same shape of failure: the
+    //                      step registers, the log says correct, and the player
+    //                      turns a wheel that was already closed. It also
+    //                      leaves RightArmIk still pointed at ValveGrip, so the
+    //                      next run's towel grab would fade the right arm in
+    //                      toward the LPG tank instead of the towel.
     //
     //   wctlButtons        each correct tap greys its own button out, and
     //                      nothing ever put them back. Attempt two starts with
@@ -408,15 +427,18 @@ public class SimulationManager : MonoBehaviour
     // the parent and a WORLD pose, so it has to run after them — otherwise the
     // two controllers would write local coordinates against the sink.
     //
-    // No-ops entirely in Office and Classroom, where all six are null.
+    // valveTurn is independent of the towel and can sit anywhere in the list.
+    //
+    // No-ops entirely in Office and Classroom, where all seven are null.
     // -------------------------------------------------------
-    private void ResetKitchenTowel()
+    private void ResetKitchenState()
     {
         if (towelDip != null) towelDip.ResetToRest();
         if (towelCover != null) towelCover.ResetToRest();
         if (towelGrab != null) towelGrab.ResetToTimba();
         if (towelWetness != null) towelWetness.ResetToDry();
         if (towelInteractable != null) towelInteractable.ResetForReplay();
+        if (valveTurn != null) valveTurn.ResetToStart();
         if (wctlButtons != null) wctlButtons.ResetForReplay();
     }
 
@@ -434,8 +456,9 @@ public class SimulationManager : MonoBehaviour
         // Kill any spray still running.
         if (sprayVFX != null) sprayVFX.Stop();
 
-        // KITCHEN — towel back on the sink, dry, tappable, buttons live.
-        ResetKitchenTowel();
+        // KITCHEN — towel back on the sink, dry, tappable, valve open,
+        // buttons live.
+        ResetKitchenState();
 
         // CRITICAL — see the header note. Without this a replay inherits
         // HoseLayer and LeverLayer at weight 0 and moves nothing, silently.
@@ -664,10 +687,10 @@ public class SimulationManager : MonoBehaviour
     // "Alarm", "Twist", "Pull", and so on.
     //
     // That substring matching is also what lets Kitchen share this method.
-    // "GrabTowel" hits the Grab branch; "WCTL_Wet" and "WCTL_Cover" hit their
-    // own branches further down. NO KitchenStep NAME CONTAINS "Alarm", which
-    // is why Kitchen needs no edit here to skip the alarm step — that branch
-    // is simply unreachable there.
+    // "GrabTowel" hits the Grab branch; "WCTL_Wet", "WCTL_Cover" and
+    // "WCTL_TurnOff" hit their own branches further down. NO KitchenStep NAME
+    // CONTAINS "Alarm", which is why Kitchen needs no edit here to skip the
+    // alarm step — that branch is simply unreachable there.
     //
     // ORDER MATTERS. The alarm press is a HAND animation and does not use
     // extinguisherAnimator at all, so it must be dispatched BEFORE the
@@ -929,12 +952,46 @@ public class SimulationManager : MonoBehaviour
                 EndStepLockout();
             }
         }
+        else if (name.Contains("TurnOff"))
+        {
+            // KITCHEN — reach, turn, release. About 1.75 seconds.
+            //
+            // MUST SIT ABOVE THE CATCH-ALL BELOW. Anything after a bare else
+            // is unreachable, and a branch that never runs looks identical to
+            // a branch that runs and does nothing.
+            //
+            // The hand needs no separate animation. ValveGrip is a CHILD of
+            // Regulator_Valve, so rotating the valve orbits the marker and the
+            // IK constraint drags the wrist around with it — the same trick
+            // Grip_Pin uses on the extinguisher, and GripPoint_R on the towel.
+            //
+            // Same one-owner rule as the dip and the cover: the routine that
+            // holds the real duration also owns the unlock, so EndStepLockout
+            // is handed in rather than fired from a timer here.
+            //
+            // NOTE ON THE RIGHT ARM. By this point TowelCoverController has
+            // already faded both arm IKs to zero and released the fingers, so
+            // the arm is sitting in its FK rest pose with nothing competing
+            // for it. That is why the reach can be a plain weight fade rather
+            // than a travel from wherever the hand happened to be.
+            if (valveTurn != null)
+            {
+                valveTurn.PlayTurn(EndStepLockout);
+            }
+            else
+            {
+                Debug.LogWarning("[SimulationManager] Turn Off step reached with no " +
+                                 "KitchenValveController assigned — skipping the " +
+                                 "animation. The step still registers, but the valve " +
+                                 "will not move and the gas stays visibly on.");
+                EndStepLockout();
+            }
+        }
         else
         {
-            // Evacuate, WCTL Turn Off, or any step with no animation yet.
-            // Nothing to wait for.
+            // Evacuate, or any step with no animation yet. Nothing to wait for.
             //
-            // When Turn Off gets its choreography, add a branch ABOVE this
+            // When a new step gets its choreography, add a branch ABOVE this
             // one — anything after a catch-all else is unreachable — and make
             // it clear the lockout itself, either directly or through a
             // completion callback.
@@ -1174,15 +1231,16 @@ public class SimulationManager : MonoBehaviour
         // Harmless in Kitchen too, where every reference here is null.
         OnFireIsOut();
 
-        // KITCHEN — same reasoning, for the towel. The timer can expire
-        // mid-dip or mid-throw, leaving the towel frozen in the sink pose or
-        // parented to the LPG tank over the results screen, with coroutine
-        // handles still set into the next run.
+        // KITCHEN — same reasoning, for the towel and the valve. The timer can
+        // expire mid-dip, mid-throw or mid-turn, leaving the towel frozen in
+        // the sink pose, parented to the LPG tank, or the right arm still
+        // welded to a half-turned valve over the results screen — with
+        // coroutine handles still set into the next run.
         //
-        // The full six, not just the two controllers: a run that ends on step
-        // 3 leaves the Wet button greyed out and the towel wet, and neither
+        // The full seven, not just the controllers: a run that ends on step 3
+        // leaves the Wet button greyed out and the towel wet, and neither
         // would be put back by Start() alone if the scene is not reloaded.
-        ResetKitchenTowel();
+        ResetKitchenState();
 
         // Clear the lockout so a run that ended mid-choreography does not
         // leave the flag set for whatever comes next.
