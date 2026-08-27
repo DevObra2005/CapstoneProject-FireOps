@@ -46,7 +46,7 @@ using UnityEngine;
 // -------------------------------------------------------
 // THE GRAB HANDOFF — ONE OBJECT, EXACTLY LIKE THE EXTINGUISHER
 //
-// There is ONE towel. It starts draped over the timba, and on a correct tap
+// There is ONE towel. It starts draped over the sink, and on a correct tap
 // TowelGrab flies it into TowelAnchor and parents it to the camera. Same
 // pattern as ExtinguisherGrab, same feel to the player.
 //
@@ -54,12 +54,27 @@ using UnityEngine;
 // consumed by the tap — it BECOMES the held towel. Ticking it would hide the
 // thing the player just picked up.
 //
-// (An earlier version swapped between two separate towels: a draped prop and
-// a hidden held one. It worked, but meant two meshes and two Animators to
-// keep in sync, plus a prop that showed up in Phase 1 the moment anyone saved
-// the scene with the wrong checkbox ticked. The single-object version needs
-// TowelDipController and TowelCoverController to capture their rest pose
-// lazily rather than in Start — see the note in TowelGrab.cs.)
+// -------------------------------------------------------
+// THE SIM-ACTIVE GUARD — WHY IT IS THERE
+//
+// SimulationManager.RegisterCorrectAction opens with `if (!simActive) return;`
+// and says nothing when it bails. So a tap landing before BeginSimulation()
+// fires is SILENTLY DISCARDED: no feedback row, no step advanced, no entry in
+// the results array.
+//
+// That would be survivable if nothing else happened. It is not — look at the
+// order in Interact() below. towelGrab.Grab() runs FIRST. So the towel flew
+// into the player's hands, looked exactly like a successful grab, and the step
+// was never recorded. The admin panel then showed Wet as step 1 with GrabTowel
+// missing entirely, and nothing anywhere pointed at the cause.
+//
+// Office has the same hole, but the extinguisher is on a wall across the room:
+// you have to walk there, and by then the timer is running. The Kitchen towel
+// sits on the sink, sometimes within tapping distance of where the player
+// spawns — so Kitchen hit it and Office never did.
+//
+// The guard turns an invisible half-action into a clean no-op. It goes at the
+// TOP, before anything with a side effect.
 // -------------------------------------------------------
 
 public class KitchenInteractable : MonoBehaviour, IInteractable
@@ -75,7 +90,7 @@ public class KitchenInteractable : MonoBehaviour, IInteractable
     [SerializeField] private bool isCorrectAction = true;
 
     [Header("Reporting")]
-    [Tooltip("Readable label sent to Laravel, e.g. 'TowelOnTimba'. Leave blank " +
+    [Tooltip("Readable label sent to Laravel, e.g. 'TowelOnSink'. Leave blank " +
              "to fall back to this GameObject's name.")]
     [SerializeField] private string actionName = "";
 
@@ -95,7 +110,7 @@ public class KitchenInteractable : MonoBehaviour, IInteractable
 
     [Header("Towel Grab (GrabTowel step only)")]
     [Tooltip("The TowelGrab component on this same object. On a correct tap " +
-             "it flies the towel from the timba into TowelAnchor and fades the " +
+             "it flies the towel from the sink into TowelAnchor and fades the " +
              "arm IK in, exactly as ExtinguisherGrab does for the wall " +
              "extinguisher.\n\n" +
              "Left empty, this is found automatically on the same GameObject.")]
@@ -156,14 +171,20 @@ public class KitchenInteractable : MonoBehaviour, IInteractable
 
     public void OnHoverEnter()
     {
-        // Do not advertise a tap that would do nothing. Once the step is past,
-        // this object is inert, and an outline would promise otherwise.
+        // Do not advertise a tap that would do nothing.
         //
-        // This matters MORE now that the towel survives its own step. It stays
-        // in the player's hands for the rest of the run, so without this guard
-        // it would light up blue every time they glanced down at it.
-        if (SimulationManager.Instance != null &&
-            SimulationManager.Instance.CurrentStep > (int)requiredStep) return;
+        // Before the timer starts, a tap is silently ignored (see the guard in
+        // Interact), so lighting up would promise something the object cannot
+        // deliver — and that is exactly the promise that caused players to tap
+        // the towel early and lose the step.
+        if (SimulationManager.Instance == null) return;
+        if (!SimulationManager.Instance.IsSimActive) return;
+
+        // Once the step is past, this object is inert. This matters MORE now
+        // that the towel survives its own step — it stays in the player's
+        // hands for the rest of the run, so without this guard it would light
+        // up blue every time they glanced down at it.
+        if (SimulationManager.Instance.CurrentStep > (int)requiredStep) return;
 
         if (outlineInstance != null)
             outlineInstance.SetFloat(OutlineWidthID, outlineWidth);
@@ -187,6 +208,21 @@ public class KitchenInteractable : MonoBehaviour, IInteractable
     {
         if (PlayerPrefs.GetInt("SimulationMode", 0) != 1) return;
         if (SimulationManager.Instance == null) return;
+
+        // THE TIMER IS NOT RUNNING YET.
+        //
+        // Must come BEFORE the grab below. RegisterCorrectAction would drop
+        // the step in silence, but towelGrab.Grab() would still fly the towel
+        // into the player's hands — so the grab LOOKED successful while
+        // GrabTowel never reached the results array. See the header.
+        //
+        // Deliberately silent, like the anti-spam guard: the player has not
+        // done anything wrong, the simulation simply has not started.
+        if (!SimulationManager.Instance.IsSimActive)
+        {
+            Debug.Log($"[Kitchen] {gameObject.name} ignored — simulation has not started yet.");
+            return;
+        }
 
         // ANTI-SPAM. The previous step's choreography is still playing, so the
         // player is EARLY, not WRONG. Ignored silently — no penalty, no step
@@ -236,6 +272,10 @@ public class KitchenInteractable : MonoBehaviour, IInteractable
             // THE HANDOFF. Started BEFORE registering the step, so the flight
             // is already underway as the step advances — same ordering as
             // SimulationInteractable calling extinguisherGrab.Grab().
+            //
+            // Safe to keep that order ONLY because of the IsSimActive guard
+            // above. Without it, this line ran while the registration silently
+            // did not, and the two came apart.
             //
             // The flight is NOT awaited. TowelGrab owns its own timing and the
             // step lockout in SimulationManager covers the window, exactly as
@@ -290,15 +330,16 @@ public class KitchenInteractable : MonoBehaviour, IInteractable
     //
     // Call from wherever the Kitchen run resets, alongside
     // TowelGrab.ResetToTimba(), TowelWetnessController.ResetToDry(),
-    // TowelDipController.ResetToRest(), TowelCoverController.ResetToRest()
-    // and WCTLButtonManager.ResetForReplay().
+    // TowelDipController.ResetToRest(), TowelCoverController.ResetToRest(),
+    // KitchenValveController.ResetToStart() and
+    // WCTLButtonManager.ResetForReplay().
     //
     // Note the split of responsibility: THIS script only restores its own
     // state — active, un-outlined, tappable again. Putting the towel back on
-    // the timba belongs to TowelGrab, which is what moved it.
+    // the sink belongs to TowelGrab, which is what moved it.
     //
     // Calling both is required. Reset only this one and the towel stays in the
-    // player's hands while the tap target believes it is still on the bucket.
+    // player's hands while the tap target believes it is still on the sink.
     // -------------------------------------------------------
     public void ResetForReplay()
     {

@@ -13,12 +13,19 @@ public class HazardActionTarget : MonoBehaviour
 
     private ClickableHazard owner;
 
-    [Header("Highlight")]
-    [Tooltip("Bright green — reads clearly as 'perform this action'")]
+    [Header("Marker Arrow")]
+    [Tooltip("Float a green arrow above this object when it becomes the objective")]
+    public bool useMarkerArrow = true;
+
+    [Header("Legacy Glow (off by default)")]
+    [Tooltip("The old pulsing emission hint. Tick to use it instead of, or alongside, the arrow.")]
+    public bool useGlow = false;
+
+    [Tooltip("Bright green - reads clearly as 'perform this action'")]
     public Color highlightColor = new Color(0.239f, 0.910f, 0.318f);
 
     [Range(0f, 5f)]
-    [Tooltip("Keep low — the pulse does the work, not raw brightness")]
+    [Tooltip("Keep low - the pulse does the work, not raw brightness")]
     public float glowIntensity = 0.5f;
 
     [Tooltip("Breathing speed")]
@@ -42,18 +49,49 @@ public class HazardActionTarget : MonoBehaviour
     public void Setup(ClickableHazard hazard)
     {
         owner = hazard;
-        CacheRenderers();
 
         if (GetComponentInChildren<Collider>() == null)
             Debug.LogWarning($"[HazardActionTarget] '{gameObject.name}' has no Collider!");
 
-        armBlend = 0f;
-        pulsing = true;
-
         // Register as the currently-armed target so the interaction
         // manager locks out all other hazards until this is tapped.
         ActiveTarget = this;
+
+        if (useMarkerArrow)
+            ShowArrow();
+
+        if (useGlow)
+        {
+            CacheRenderers();
+            armBlend = 0f;
+            pulsing = true;
+        }
     }
+
+    // -------------------------------------------------------
+    // Marker arrow
+    // -------------------------------------------------------
+
+    private void ShowArrow()
+    {
+        if (MarkerArrowManager.Instance == null)
+        {
+            Debug.LogWarning("[HazardActionTarget] No MarkerArrowManager in the scene.");
+            return;
+        }
+
+        MarkerArrowManager.Instance.PointAt(transform);
+    }
+
+    private void HideArrow()
+    {
+        if (MarkerArrowManager.Instance == null) return;
+        MarkerArrowManager.Instance.Hide();
+    }
+
+    // -------------------------------------------------------
+    // Legacy glow
+    // -------------------------------------------------------
 
     // Remember each material's starting emission so we can restore it perfectly.
     private void CacheRenderers()
@@ -79,7 +117,7 @@ public class HazardActionTarget : MonoBehaviour
         // Ease the glow in when first armed, so it doesn't pop
         armBlend = Mathf.MoveTowards(armBlend, 1f, Time.deltaTime * fadeInSpeed);
 
-        // Breathing pulse — never fully dark, so it stays readable
+        // Breathing pulse - never fully dark, so it stays readable
         float wave = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
         float pulse = (1f - pulseDepth) + pulseDepth * wave;
 
@@ -124,20 +162,35 @@ public class HazardActionTarget : MonoBehaviour
         }
     }
 
+    // -------------------------------------------------------
+    // Interaction
+    // -------------------------------------------------------
+
     public void OnClicked()
     {
-        // Guard — only responds once the hazard has armed it via Setup()
+        // Guard - only responds once the hazard has armed it via Setup()
         if (owner == null) return;
 
         pulsing = false;
         armBlend = 0f;
         ClearGlow();
+        HideArrow();
 
         // Clear the global lock so other hazards become interactable again.
         if (ActiveTarget == this)
             ActiveTarget = null;
 
         owner.CompleteHazard();
+    }
+
+    // Safety net: if this object is switched off or the scene unloads
+    // while it is still the armed target, don't leave a stranded arrow.
+    void OnDisable()
+    {
+        if (ActiveTarget != this) return;
+
+        HideArrow();
+        ActiveTarget = null;
     }
 
     public void OnHoverEnter() { }
