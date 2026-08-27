@@ -12,14 +12,43 @@ using TMPro;
 //   - Stats:  score, time left, penalties
 //   - Step breakdown: one row per step (reuses the ResultStepRow variant)
 //
-// WRONG rows now MIRROR the live feedback log: instead of the tapped
-// step name, they show the CORRECT hint the player should have done
-// (e.g. "Twist the pin!"). We work out which step they were on by
-// counting how many steps before it were correct:
+// WRONG rows MIRROR the live feedback log: instead of the tapped step name,
+// they show the CORRECT hint the player should have done. We work out which
+// step they were on by counting how many steps before it were correct:
 //     currentStepNumber = (correct so far) + 1
-// then StepNames.Hint(currentStepNumber) gives the command.
+// then StepNames.Hint(...) gives the command.
 //
-// CORRECT rows show the friendly step name, as before.
+// CORRECT rows show the friendly step name.
+//
+// -------------------------------------------------------
+// THE HINT IS COMPUTED HERE, NOT STORED
+//
+// Worth knowing before debugging this screen: the wrong-row text does NOT
+// come from the database. Laravel stores the step name and the penalty; the
+// instruction is worked out fresh every time this screen loads.
+//
+// That means a wrong hint here is a bug in THIS file, not bad data — and it
+// also means fixing it retroactively corrects every past attempt, because
+// nothing wrong was ever written down.
+//
+// -------------------------------------------------------
+// WHY THE ENVIRONMENT HAS TO BE PASSED TO Hint()
+//
+// This used to call StepNames.Hint(correctSoFar + 1) — the single-argument
+// overload, which only knows the TPASS sequence.
+//
+// Hint is keyed by STEP NUMBER, and both environments number from 1. Office
+// step 3 is "Twist the pin"; Kitchen step 3 is "Cover the flame". So a Kitchen
+// attempt rendered every wrong row with Office instructions: a player who
+// mis-tapped in a kitchen with no extinguisher in it was told to twist a pin.
+//
+// Nothing errored. Every integer had an answer, so the lookup returned
+// confidently wrong text.
+//
+// The live feedback log already got this right — SimulationManager passes its
+// own useKitchenHints flag. This screen has no manager to ask, so it reads the
+// environment off the record it is displaying, which is the same information
+// arriving by a different route.
 // -------------------------------------------------------
 
 public class ResultsDetailManager : MonoBehaviour
@@ -83,6 +112,22 @@ public class ResultsDetailManager : MonoBehaviour
             statPenaltyText.text = env.total_penalties + "s";
     }
 
+    // -------------------------------------------------------
+    // Which hint table to read.
+    //
+    // Case-insensitive on purpose. The value comes from a database column
+    // written by Unity's ResultsSubmitter, and that is a free-text Inspector
+    // field — one scene saved with "Kitchen" instead of "kitchen" would
+    // otherwise silently fall back to Office hints, which is exactly the bug
+    // this method exists to prevent.
+    // -------------------------------------------------------
+    private bool IsKitchen(EnvironmentResult env)
+    {
+        return env != null &&
+               string.Equals(env.environment, "kitchen",
+                             System.StringComparison.OrdinalIgnoreCase);
+    }
+
     private void BuildStepRows(EnvironmentResult env)
     {
         if (stepContainer == null || stepRowPrefab == null)
@@ -95,6 +140,8 @@ public class ResultsDetailManager : MonoBehaviour
             Destroy(child.gameObject);
 
         if (env.steps == null) return;
+
+        bool isKitchen = IsKitchen(env);
 
         // Tracks which step the player was ON: it only advances when a
         // step is completed CORRECTLY (same rule as SimulationManager).
@@ -111,6 +158,9 @@ public class ResultsDetailManager : MonoBehaviour
             if (step.was_correct)
             {
                 // Correct row: show the friendly name of what they did.
+                // Friendly() is keyed by ENUM NAME rather than number, and
+                // holds both sequences, so it needs no environment flag —
+                // "WCTL_Wet" and "TPASS_Twist" can never collide.
                 message = StepNames.Friendly(step.step_name);
                 correctSoFar++;   // player advanced to the next step
             }
@@ -118,7 +168,10 @@ public class ResultsDetailManager : MonoBehaviour
             {
                 // Wrong row: show the CORRECT hint for the step they were on.
                 // Step number they were on = correctSoFar + 1.
-                message = StepNames.Hint(correctSoFar + 1);
+                //
+                // isKitchen picks the table. Without it this returned TPASS
+                // instructions for every environment — see the header.
+                message = StepNames.Hint(correctSoFar + 1, isKitchen);
             }
 
             SetChildText(row, "Title", step.was_correct ? "CORRECT" : "WRONG", accent);
