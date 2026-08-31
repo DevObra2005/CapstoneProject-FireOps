@@ -47,7 +47,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MarkerArrow
   target: {fileID: 0}
   useRendererBounds: 1
-  heightOffset: 0.6
+  heightOffset: 0.1
   bobHeight: 0.1
   bobSpeed: 2.2
   spin: 1

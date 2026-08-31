@@ -37,6 +37,43 @@ using UnityEngine;
 // SET useKitchenSteps PER SCENE. Tick in Kitchen, leave unticked in Office
 // and Classroom. Getting it wrong does not break the run — it corrupts the
 // step names in the results, which is worse, because nothing tells you.
+//
+// -------------------------------------------------------
+// THE FIRE-BLOCKED EXIT (OFFICE ONLY)
+//
+// One addition: a fire still burning in the doorway blocks the WIN.
+//
+// WHAT IT GUARDS. In the Office decision scenario the player chooses which
+// of two fires to attack. Choose the far one and TwoFireDecision lets it
+// die, grows the doorway fire, and ends the run in a loss about six seconds
+// later.
+//
+// currentStep is already 8 during those six seconds. Without this check a
+// player who sprints to the door taps it, passes the step test, and the run
+// ends as a WIN — through a doorway that is visibly on fire, seconds before
+// the loss was going to land.
+//
+// WHERE IT SITS, AND WHY THAT IS DELIBERATE. Inside the final-step branch,
+// NOT above it. The early-exit penalty below is untouched: tapping the door
+// at step 1 still costs 20 seconds and still says "sound the alarm first",
+// exactly as before. That path already worked and teaches the right thing —
+// leaving without raising the alarm is a real mistake, not a blocked one.
+//
+// So this check only ever answers one question: may this run be WON right
+// now? A doorway on fire says no.
+//
+// NO PENALTY, AND AMBER RATHER THAN RED. The player finished the sequence
+// and walked to the exit — nothing about that is wrong. The room is refusing
+// them, not marking them down. Same treatment TPASSButtonManager gives a
+// positioning mistake.
+//
+// A PHYSICAL BLOCKER IS STILL WORTH ADDING. A Box Collider on a CHILD of the
+// fire object stops the player reaching the door at all, and disappears on
+// its own when the fire deactivates. This check is the safety net behind it:
+// geometry can be mis-sized, and a gap in a collider is silent.
+//
+// LEAVE Exit Blocking Fire EMPTY in Kitchen and Classroom. Null means the
+// check is skipped and this file behaves exactly as it always has.
 // -------------------------------------------------------
 
 [RequireComponent(typeof(Collider))]
@@ -75,6 +112,27 @@ public class Door : MonoBehaviour, IInteractable
     [SerializeField]
     private string wrongExitTip =
         "You must finish putting out the fire before evacuating!";
+
+    [Header("Phase 2 — Fire Blocking the Exit (Office only)")]
+    [Tooltip("OFFICE ONLY. The fire burning IN THE DOORWAY. Leave EMPTY in " +
+             "Kitchen and Classroom.\n\n" +
+             "While this fire is still burning the run cannot be WON here — " +
+             "so a player who cleared the wrong fire cannot sprint to the " +
+             "door and steal a win in the seconds before the loss lands.\n\n" +
+             "It does NOT affect the early-exit penalty. Tapping the door at " +
+             "step 1 still costs 20 seconds and still says to sound the alarm " +
+             "first, exactly as before.\n\n" +
+             "Assign the same FireController that is set as Exit Fire on " +
+             "TwoFireDecision. If those two ever point at different fires, the " +
+             "decision and the door would disagree about which one matters.")]
+    [SerializeField] private FireController exitBlockingFire;
+
+    [TextArea]
+    [Tooltip("Amber row shown when the doorway is on fire. Keep it SHORT — " +
+             "the feedback row truncates, and a warning cut off mid-sentence " +
+             "is worse than a blunt one.")]
+    [SerializeField]
+    private string fireBlockingTip = "Fire is blocking the exit.";
 
     private bool isOpen = false;
     private float currentAngle = 0f;
@@ -143,10 +201,14 @@ public class Door : MonoBehaviour, IInteractable
     // A DOOR TAP DURING PHASE 2
     //
     // At the FINAL step this is the correct Evacuate action: the door opens,
-    // the step logs correct, and the run ends as a win.
+    // the step logs correct, and the run ends as a win — UNLESS the doorway
+    // itself is still on fire, in which case the tap is refused and nothing
+    // is taken.
     //
     // Earlier than that, it is a wrong action — a penalty and a tip, door
-    // stays shut, simulation keeps running.
+    // stays shut, simulation keeps running. UNCHANGED, including in Office
+    // with a fire in the doorway: leaving without finishing the sequence is a
+    // real mistake and should still be marked as one.
     //
     // MaxStep rather than a hardcoded number, because the final step is 8 in
     // Office and 5 in Kitchen. Each scene sets MaxStep to match its own enum,
@@ -161,7 +223,26 @@ public class Door : MonoBehaviour, IInteractable
 
         if (currentStep >= finalStep)
         {
-            // Correct — the sequence is done, this really is the exit.
+            // THE WAY OUT IS ON FIRE. The sequence is finished, but this run
+            // cannot be won through a burning doorway — see the header note
+            // for the stolen win this prevents.
+            //
+            // Null in Kitchen and Classroom, so those scenes never reach the
+            // body of this if.
+            if (IsExitBlockedByFire())
+            {
+                Debug.Log("[Door] Win refused — the exit fire is still burning.");
+
+                // Amber, not red. No time taken: they did the sequence and
+                // walked to the exit. The room is refusing them, not marking
+                // them down.
+                if (ActionFeedbackManager.Instance != null)
+                    ActionFeedbackManager.Instance.ShowHint(fireBlockingTip);
+
+                return;
+            }
+
+            // Correct — the sequence is done and the way is clear.
             OpenDoor();
 
             Debug.Log($"[Door] Evacuating at step {currentStep} of {finalStep}.");
@@ -178,7 +259,7 @@ public class Door : MonoBehaviour, IInteractable
         }
         else
         {
-            // Wrong — tried to leave before finishing.
+            // Wrong — tried to leave before finishing. UNTOUCHED.
             Debug.Log($"[Door] WRONG — tried to evacuate at step {currentStep}, " +
                       $"final step is {finalStep}. Penalty -{wrongExitPenalty}s");
 
@@ -189,6 +270,34 @@ public class Door : MonoBehaviour, IInteractable
                 wrongExitTip
             );
         }
+    }
+
+    // -------------------------------------------------------
+    // IS A FIRE STILL BURNING IN THE DOORWAY?
+    //
+    // Three things have to be true for the answer to be yes:
+    //
+    //   a fire is assigned      — null in Kitchen and Classroom, so those
+    //                             scenes skip this entirely
+    //
+    //   its object is active    — a fire that has already been hidden is
+    //                             gone. Also covers a scene where the fire
+    //                             starts disabled.
+    //
+    //   IsOut is false          — the flames have not finished dying.
+    //
+    // THE IsOut CHECK IS THE ONE THAT MATTERS. FireController keeps a dead
+    // fire's object alive for hideDelay seconds — about two — so drifting
+    // particles can fade rather than pop out. Testing only activeInHierarchy
+    // would refuse the win for those two seconds with the fire visibly out,
+    // on the run where the player did everything right.
+    // -------------------------------------------------------
+    private bool IsExitBlockedByFire()
+    {
+        if (exitBlockingFire == null) return false;
+        if (!exitBlockingFire.gameObject.activeInHierarchy) return false;
+
+        return !exitBlockingFire.IsOut;
     }
 
     // -------------------------------------------------------

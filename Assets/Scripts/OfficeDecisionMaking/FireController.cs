@@ -12,9 +12,8 @@ using UnityEngine;
 // size over time (a smooth lerp), so the fire looks like it is actually
 // being extinguished, not just switched off.
 //
-// This script goes on the fire object (VFX_Fire_01_Big_Smoke). It
-// automatically finds ALL child particle systems (flames, smoke, embers)
-// and dims them together.
+// This script goes on the fire object. It automatically finds ALL child
+// particle systems (flames, smoke, embers) and dims them together.
 //
 // ANALOGY: a dimmer switch for the fire, not an on/off switch.
 // Squeeze = dim halfway. Sweep = dim to zero.
@@ -52,6 +51,34 @@ using UnityEngine;
 //
 // Same pattern as the onArrived callbacks on LeftHandIKController: one
 // owner per number, everyone else asks to be told when it is done.
+//
+// -------------------------------------------------------
+// THREE ADDITIONS FOR THE OFFICE TWO-FIRE DECISION.
+//
+//   GrowFire()            makes a fire BIGGER instead of smaller
+//   ResetToFullStrength() puts a fire back to its starting size
+//   IsOut                 has this fire finished dying?
+//
+// ALL THREE ARE PURELY ADDITIVE. Not one existing line changed, so KITCHEN
+// AND CLASSROOM BEHAVE EXACTLY AS BEFORE. Kitchen calls only
+// ExtinguishFire(); it has no way to reach any of them.
+//
+// GrowFire reuses ScaleFireRoutine unchanged. That routine already scales
+// toward (original * targetFraction), and nothing in it assumed the
+// fraction was below 1 - so growth needed no new fade logic at all, only a
+// fraction above 1 and isDeath left false.
+//
+// WHY IsOut EXISTS RATHER THAN CHECKING activeInHierarchy.
+// A dead fire hides itself, but only after hideDelay - about two seconds
+// later, so drifting particles can fade instead of popping out of
+// existence. Anything asking "is this fire still burning?" by checking
+// whether the object is active would get YES for those two seconds, long
+// after the flames are gone.
+//
+// Door uses this to decide whether the exit is blocked. Without IsOut, a
+// player who correctly cleared the doorway fire would be refused at the
+// door for two seconds with the fire visibly out - which reads as a bug,
+// and is exactly the kind of thing that gets found during a defense demo.
 // -------------------------------------------------------
 
 public class FireController : MonoBehaviour
@@ -73,15 +100,26 @@ public class FireController : MonoBehaviour
     [Header("Die Settings")]
     [Tooltip("How long the fire takes to fully die on SWEEP, in seconds.\n\n" +
              "This is ALSO how long the spray keeps running after Sweep, " +
-             "because the onFireOut callback fires at the end of this fade.")]
+             "because the onFireOut callback fires at the end of this fade.\n\n" +
+             "SET TO 0 AND THE FIRE DIES INSTANTLY, which makes the hose look " +
+             "like it never sweeps: the relax fade starts on the same frame " +
+             "as the Sweep clip and pulls the layer to zero before the blend " +
+             "finishes. Around 2 is right.")]
     [SerializeField] private float dieDuration = 2f;
 
-    [Tooltip("Should the whole fire object turn off after it dies?")]
+    [Tooltip("Should the whole fire object turn off after it dies?\n\n" +
+             "KEEP THIS TICKED on the exit fire in Office. Its blocker " +
+             "collider is a CHILD of this object, so deactivating is what " +
+             "clears the doorway. Untick it and the player can never leave, " +
+             "even after doing everything right.")]
     [SerializeField] private bool deactivateAfterDeath = true;
 
     [Tooltip("Seconds to wait after the flames are out before hiding the " +
              "object, so lingering particles can drift away rather than pop " +
-             "out of existence.")]
+             "out of existence.\n\n" +
+             "Nothing should test 'is the fire out' by checking whether this " +
+             "object is active — that answer is wrong for this many seconds. " +
+             "Use IsOut instead.")]
     [SerializeField] private float hideDelay = 2f;
 
     // -------------------------------------------------------
@@ -92,6 +130,20 @@ public class FireController : MonoBehaviour
     private ParticleSystem[] allSystems;
     private float[] originalEmission;
     private float[] originalStartSize;
+
+    // TRUE from the moment the death fade FINISHES — not when Sweep was
+    // tapped, and not when the object is hidden. See the header note.
+    private bool isOut = false;
+
+    /// <summary>
+    /// TRUE once this fire has finished dying. Read by Door to decide whether
+    /// the exit is blocked.
+    ///
+    /// Deliberately not "is the GameObject active": the object stays active
+    /// for hideDelay seconds after the flames are gone, so that test would
+    /// report a dead fire as still burning.
+    /// </summary>
+    public bool IsOut => isOut;
 
     private void Start()
     {
@@ -111,6 +163,8 @@ public class FireController : MonoBehaviour
             var main = allSystems[i].main;
             originalStartSize[i] = main.startSize.constant;
         }
+
+        isOut = false;
     }
 
     // -------------------------------------------------------
@@ -120,9 +174,6 @@ public class FireController : MonoBehaviour
     // onWeakened fires when the shrink has finished, so the caller knows the
     // reduction is actually on screen. SimulationManager uses it to unlock
     // the TPASS buttons - see the note at the top of this file.
-    //
-    // Passing nothing is fine; the parameter is optional and any existing
-    // WeakenFire() call still compiles unchanged.
     // -------------------------------------------------------
     public void WeakenFire(Action onWeakened = null)
     {
@@ -147,10 +198,93 @@ public class FireController : MonoBehaviour
     }
 
     // -------------------------------------------------------
+    // OFFICE TWO-FIRE DECISION ONLY: make the fire BIGGER.
+    //
+    // Called by TwoFireDecision once the first fire is out, so the remaining
+    // one visibly takes hold. NOTHING ELSE CALLS THIS.
+    //
+    //   targetFraction  size relative to the fire's ORIGINAL size, not its
+    //                   current one. 1.6 = 60% bigger than it started.
+    //                   Values at or below 1 would SHRINK the fire, which
+    //                   teaches the opposite lesson - clamped below so a
+    //                   mistyped Inspector value cannot silently reverse it.
+    //
+    // isDeath is FALSE, so nothing is stopped and the object is never
+    // hidden - this fire is meant to keep burning behind the player.
+    // -------------------------------------------------------
+    public void GrowFire(float targetFraction, float duration, Action onGrown = null)
+    {
+        if (allSystems == null || allSystems.Length == 0)
+        {
+            Debug.LogWarning("[FireController] GrowFire called before Start() had found " +
+                             "any particle systems - ignored.");
+            onGrown?.Invoke();
+            return;
+        }
+
+        if (targetFraction <= 1f)
+        {
+            Debug.LogWarning($"[FireController] GrowFire target {targetFraction} is not " +
+                             "larger than 1 - clamping to 1.5. Set Grow To above 1 on " +
+                             "TwoFireDecision.");
+            targetFraction = 1.5f;
+        }
+
+        StopAllCoroutines();
+        StartCoroutine(ScaleFireRoutine(targetFraction, Mathf.Max(0.01f, duration), false, onGrown));
+        Debug.Log($"[FireController] Fire grew to {targetFraction}x (spread).");
+    }
+
+    // -------------------------------------------------------
+    // OFFICE TWO-FIRE DECISION ONLY: put the fire back to how it started.
+    //
+    // Insurance, mostly. The Office scene reloads between attempts, which
+    // re-runs Start() and restores everything anyway - so in normal play this
+    // does nothing that was not already done.
+    //
+    // It exists because TwoFireDecision.ResetForReplay is wired into
+    // SimulationManager.ResetRuntimeState, and a run restarted WITHOUT a
+    // scene reload would otherwise start with a dead or oversized fire.
+    //
+    // Instant, not a fade. This runs during setup, where nobody is watching.
+    // -------------------------------------------------------
+    public void ResetToFullStrength()
+    {
+        // Called before Start() has run - nothing captured yet, and nothing
+        // to restore. Start() will set the correct values momentarily.
+        if (allSystems == null || allSystems.Length == 0) return;
+
+        StopAllCoroutines();
+
+        for (int i = 0; i < allSystems.Length; i++)
+        {
+            if (allSystems[i] == null) continue;
+
+            var emission = allSystems[i].emission;
+            emission.rateOverTime = originalEmission[i];
+
+            var main = allSystems[i].main;
+            main.startSize = originalStartSize[i];
+
+            // A dead fire was stopped with StopEmitting. Restoring the values
+            // alone would not restart it - the system has to be told to play
+            // again, and cleared of whatever particles were still drifting.
+            allSystems[i].Clear();
+            allSystems[i].Play();
+        }
+
+        // Burning again, so the exit is blocked again.
+        isOut = false;
+
+        Debug.Log("[FireController] Fire restored to full strength.");
+    }
+
+    // -------------------------------------------------------
     // Smoothly scales every particle system's emission + size from its
     // CURRENT value down to (original * targetFraction) over the duration.
     //   targetFraction 0.5 = half strength (weaken)
     //   targetFraction 0   = fully out (die)
+    //   targetFraction 1.6 = 60% larger than it started (spread)
     // -------------------------------------------------------
     private IEnumerator ScaleFireRoutine(
         float targetFraction,
@@ -201,6 +335,11 @@ public class FireController : MonoBehaviour
         {
             foreach (var ps in allSystems)
                 ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+
+            // THE FLAMES ARE GONE. Set this BEFORE the callback, so anything
+            // the callback triggers already sees the fire as out — and well
+            // before the object is hidden, which is hideDelay seconds away.
+            isOut = true;
         }
 
         // -----------------------------------------------
@@ -222,6 +361,9 @@ public class FireController : MonoBehaviour
         if (isDeath && deactivateAfterDeath)
         {
             // Give lingering particles a moment to fade, then hide.
+            //
+            // In Office this is ALSO what clears the doorway: the blocker
+            // collider is a child of this object, so it goes with it.
             yield return new WaitForSeconds(hideDelay);
             gameObject.SetActive(false);
         }

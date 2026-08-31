@@ -11,9 +11,10 @@ using TMPro;
 // LOSE REASONS (each sets its own kicker so the panel label matches):
 //   TIME EXPIRED        -> timer hit zero, player didn't finish
 //   TOO MANY MISTAKES   -> finished but scored < 50%
+//   WRONG DECISION      -> cleared the wrong fire first (Office only)
 //   COULDN'T SAVE       -> connection / unknown error
 //
-// ONE HANDLER FOR BOTH FAILURES:
+// ONE HANDLER FOR BOTH SERVER FAILURES:
 // Every attempt is submitted now, including timeouts, so a failed run
 // comes back from Laravel with fail_reason telling us WHICH kind it
 // was. ShowLoseResult reads that field and picks the right wording.
@@ -28,6 +29,37 @@ using TMPro;
 //
 // Tips were removed from these modals — the full penalty breakdown
 // lives in the Performance Results screen.
+//
+// -------------------------------------------------------
+// THE WRONG-DECISION LOSS (OFFICE ONLY)
+//
+// The Office decision scenario ends the run when the player clears the
+// far fire instead of the one blocking the door. That is a LOSS, but it
+// is not a timeout and it is not a low score — the clock may still have
+// fifty seconds on it.
+//
+// TWO PLACES WOULD HAVE MISLABELLED IT.
+//
+//   1. ShowLoseTimerRanOut is wired to SimulationManager's onLose event
+//      in the Inspector, so it fires the instant ANY loss happens. It
+//      would announce "TIME EXPIRED" over a clock that was still running.
+//
+//   2. ShowLoseResult then refreshes the panel when Laravel replies.
+//      The server only knows "timeout" or "low_score" — it has no idea a
+//      decision was made — so it would overwrite the panel with the wrong
+//      label a moment later, even if 1 had been fixed alone.
+//
+// Both now ask TwoFireDecision whether the wrong fire was chosen, and
+// that answer wins over anything the server says about the reason.
+//
+// WHY READ THE FLAG RATHER THAN KEEP A COPY. TwoFireDecision already
+// owns wrongFireChosen and already clears it in ResetForReplay. A second
+// copy here would need its own reset, and a missed reset would mean the
+// NEXT run's timeout still reported a wrong decision — silently, and only
+// on replays, which is exactly the kind of bug that survives testing.
+//
+// NULL IN KITCHEN AND CLASSROOM, so those scenes get the original
+// wording with no change at all.
 // -------------------------------------------------------
 
 public class ResultsUIManager : MonoBehaviour
@@ -66,11 +98,47 @@ public class ResultsUIManager : MonoBehaviour
              "passed and the run was not recorded.")]
     public TextMeshProUGUI loseAttemptText;
 
+    [Header("Wrong Decision Loss (Office only)")]
+    [Tooltip("Kicker shown when the run ended because the player cleared the " +
+             "WRONG FIRE first. Overrides the timeout and low-score labels, " +
+             "because neither is what actually happened — the clock may still " +
+             "have most of its time left.\n\n" +
+             "Never shown in Kitchen or Classroom: there is no TwoFireDecision " +
+             "in those scenes, so the check that reaches this is always false.")]
+    [SerializeField] private string wrongDecisionKicker = "WRONG DECISION";
+
+    [TextArea]
+    [Tooltip("Message on the lose panel for a wrong fire choice.\n\n" +
+             "Say what they did and what it cost. The player needs to " +
+             "understand the ORDER was the mistake, not the technique — they " +
+             "performed TPASS correctly, on the wrong target.")]
+    [SerializeField]
+    private string wrongDecisionMessage =
+        "You cleared the far fire first. The fire by the door spread and " +
+        "blocked your only way out. Always clear the fire nearest your exit.";
+
+    // Looked up once. Null in Kitchen and Classroom, which is exactly how
+    // those scenes keep the original wording.
+    private TwoFireDecision twoFireDecision;
+
     private void Start()
     {
         if (submittingPanel != null) submittingPanel.SetActive(false);
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
+
+        twoFireDecision = FindFirstObjectByType<TwoFireDecision>();
+    }
+
+    // -------------------------------------------------------
+    // Did this run end because the player chose the wrong fire?
+    //
+    // Asks TwoFireDecision rather than keeping a copy of the answer — see
+    // the header note on why a second copy would eventually go stale.
+    // -------------------------------------------------------
+    private bool LostByWrongDecision()
+    {
+        return twoFireDecision != null && twoFireDecision.WrongFireChosen;
     }
 
     // -------------------------------------------------------
@@ -154,15 +222,28 @@ public class ResultsUIManager : MonoBehaviour
     // sees every failure now, so fail_reason distinguishes them:
     //   "timeout"   -> the clock ran out before they finished
     //   "low_score" -> finished in time, too many wrong actions
+    //
+    // EXCEPT for a wrong fire choice, which the server cannot know about.
+    // Unity sends won: false for that run, so Laravel reports it as a
+    // timeout — and without the check below this method would overwrite
+    // the correct label a second after it appeared.
     // -------------------------------------------------------
     public void ShowLoseResult(SubmitResultResponse response)
     {
         string kicker;
         string message;
 
+        if (LostByWrongDecision())
+        {
+            // OFFICE ONLY. Takes priority over fail_reason: the clock may
+            // still have most of its time on it, so "TIME EXPIRED" would be
+            // plainly untrue on screen.
+            kicker = wrongDecisionKicker;
+            message = wrongDecisionMessage;
+        }
         // JsonUtility turns a JSON null into an EMPTY STRING, not null,
         // so compare against "timeout" directly rather than null-checking.
-        if (response.fail_reason == "timeout")
+        else if (response.fail_reason == "timeout")
         {
             kicker = "TIME EXPIRED";
             message = "The fire got out of control before you finished. " +
@@ -193,18 +274,32 @@ public class ResultsUIManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // LOSE — TIME EXPIRED, local fallback.
+    // LOSE — local fallback, shown the instant the run ends.
     //
-    // Kept for SimulationManager's onLose UnityEvent, which fires the
-    // instant the timer hits zero — BEFORE the server responds. So this
-    // shows immediately, then ShowLoseResult refreshes it with the real
-    // attempt number a moment later.
+    // Wired to SimulationManager's onLose UnityEvent, which fires BEFORE
+    // the server responds. So this shows immediately, then ShowLoseResult
+    // refreshes it with the real attempt number a moment later.
     //
     // It is also the only thing the player sees if the POST fails, which
     // is exactly when you want a local fallback.
+    //
+    // THE NAME IS NOW SLIGHTLY WRONG. It handles two local losses, not
+    // just the timer. Renaming it would break the Inspector wiring on
+    // three scenes' onLose events — a silent break, because a missing
+    // method on a UnityEvent just does nothing. Left as it is on purpose;
+    // rename it after defense if you want, and re-wire all three.
     // -------------------------------------------------------
     public void ShowLoseTimerRanOut()
     {
+        if (LostByWrongDecision())
+        {
+            ShowLosePanel(
+                kicker: wrongDecisionKicker,
+                title: "Fire Spread!",
+                message: wrongDecisionMessage);
+            return;
+        }
+
         ShowLosePanel(
             kicker: "TIME EXPIRED",
             title: "Fire Spread!",

@@ -487,6 +487,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6641307924939840349, guid: ea6ee2536b9054444925f737cda04948, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2008605810}
+    - targetCorrespondingSourceObject: {fileID: 6641307924939840349, guid: ea6ee2536b9054444925f737cda04948, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 816030227}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6296448934994166247, guid: ea6ee2536b9054444925f737cda04948, type: 3}
       insertIndex: -1
@@ -494,6 +497,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6296448934994166247, guid: ea6ee2536b9054444925f737cda04948, type: 3}
       insertIndex: -1
       addedObject: {fileID: 19721223}
+    - targetCorrespondingSourceObject: {fileID: 6296448934994166247, guid: ea6ee2536b9054444925f737cda04948, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 19721225}
   m_SourcePrefab: {fileID: 100100000, guid: ea6ee2536b9054444925f737cda04948, type: 3}
 --- !u!4 &19721221 stripped
 Transform:
@@ -547,6 +553,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.0086184, y: 2.0100005, z: 0.3098164}
   m_Center: {x: 0.0026812553, y: -0.0000004799663, z: 0.106338516}
+--- !u!114 &19721225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 19721222}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8916702aa9b0ed478d731290fcab71a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MarkerArrowAnchor
+  overrideHeight: 1
+  heightOffset: 0
+  ignoreChildRenderers: 0
+  anchorPoint: {fileID: 816030227}
 --- !u!1 &32418435
 GameObject:
   m_ObjectHideFlags: 0
@@ -5467,6 +5489,37 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!1 &816030226
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 816030227}
+  m_Layer: 0
+  m_Name: ArrowAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &816030227
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 816030226}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0.58}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 19721221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &823954907
 GameObject:
   m_ObjectHideFlags: 0
@@ -6152,6 +6205,9 @@ MonoBehaviour:
         m_CallState: 2
   maxStep: 5
   useKitchenHints: 1
+  useEvacuateArrow: 1
+  exitTarget: {fileID: 19721221}
+  evacuateArrowDelay: 1.5
   towelDip: {fileID: 1766011340}
   towelCover: {fileID: 1766011341}
   towelGrab: {fileID: 1766011345}
@@ -6865,6 +6921,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37aeb5f9017e2b940afdef0ec659ebdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HazardActionTarget
+  useMarkerArrow: 1
+  useGlow: 0
   highlightColor: {r: 0.239, g: 0.91, b: 0.318, a: 1}
   glowIntensity: 0.5
   pulseSpeed: 1.8
@@ -13689,6 +13747,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1af3d7c73bf92647908bce9110a0af3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhaseTransitionManager
+  useMarkerArrow: 1
   promptLines:
   - text: "Good work \u2014 you've handled every hazard in this Kitchen"
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
@@ -17505,7 +17564,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KitchenInteractable
   requiredStep: 1
   isCorrectAction: 1
-  actionName: 
+  actionName: Towel
   timePenalty: 20
   educationalTip: Enter tip here...
   disableAfterCorrectUse: 0
@@ -20950,6 +21009,53 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -1940272549186350024, guid: 499cf4bbd914cbd449240b600b180500, type: 3}
   m_PrefabInstance: {fileID: 798323190}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2075057419
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2075057421}
+  - component: {fileID: 2075057420}
+  m_Layer: 0
+  m_Name: MarkerArrowManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2075057420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2075057419}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d893539e58776a44bad50350e3830208, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MarkerArrowManager
+  arrowPrefab: {fileID: 4441198849528316731, guid: 9a15ea7a5cc1d854db7989932652eba6, type: 3}
+  testTarget: {fileID: 0}
+  showTestArrow: 0
+--- !u!4 &2075057421
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2075057419}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.31914, y: 1.12205, z: -4.20531}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2087229373 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 89cc55f34c7f6884fa654897b75de8e0, type: 3}
@@ -21519,3 +21625,4 @@ SceneRoots:
   - {fileID: 1861520214}
   - {fileID: 872237301}
   - {fileID: 604487687}
+  - {fileID: 2075057421}

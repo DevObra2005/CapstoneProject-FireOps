@@ -43,6 +43,22 @@ using UnityEngine.Events;
 // can never complete.
 //
 // -------------------------------------------------------
+// THE ONLY MARKER ARROW IN PHASE 2 IS THE EVACUATE ONE.
+//
+// Phase 1 is the learning module and guides every action. Phase 2 is the
+// ASSESSMENT — it feeds game_sessions, the penalty score, the pass threshold
+// and the certificate. An arrow pointing at the alarm, then the extinguisher,
+// then the fire would let a player finish a run without knowing TPASS at all,
+// and the score would stop measuring competence.
+//
+// Evacuate is the deliberate exception. Finding the exit is a NAVIGATION
+// problem, not a knowledge one — the player may never have been in this room
+// before, and every scored decision has already been made by that point.
+//
+// The defensible line, in one sentence: guidance in learning, none in
+// assessment, except wayfinding for evacuation.
+//
+// -------------------------------------------------------
 // HOW ONE MANAGER SERVES BOTH SEQUENCES
 //
 // Office uses SimulationInteractable.SimStep. Kitchen uses KitchenStep. Both
@@ -133,6 +149,31 @@ public class SimulationManager : MonoBehaviour
              "means a different instruction in each environment — so the " +
              "lookup needs to know which sequence it is describing.")]
     [SerializeField] private bool useKitchenHints = false;
+
+    [Header("Evacuate — Marker Arrow")]
+    [Tooltip("Show the green marker arrow on the exit once the fire is dealt " +
+             "with and the Evacuate step becomes active.\n\n" +
+             "This is the ONLY arrow in Phase 2. TPASS and WCTL steps stay " +
+             "unguided on purpose — see the header note. Finding the exit is " +
+             "navigation, not knowledge, so it gives away nothing being scored.")]
+    [SerializeField] private bool useEvacuateArrow = true;
+
+    [Tooltip("The exit the player must reach. Assign the Door object.\n\n" +
+             "The door's renderer bounds reach the top of the frame, so a " +
+             "bounds-based arrow floats near the ceiling. Put a " +
+             "MarkerArrowAnchor on the door with an empty child positioned in " +
+             "the DOORWAY at eye level, where a running player will see it.")]
+    [SerializeField] private Transform exitTarget;
+
+    [Tooltip("Seconds after the final step becomes active before the arrow " +
+             "appears.\n\n" +
+             "OFFICE NEEDS A DELAY. Sweep registers as correct while the fire " +
+             "is still visibly fading — an arrow at that instant tells the " +
+             "player to run before the flames are out, which is the opposite " +
+             "of the drill. Around 1.5 lets the fire die first.\n\n" +
+             "KITCHEN can be shorter. The fire dies on towel CONTACT, which is " +
+             "already finished by the time the Turn Off step completes.")]
+    [SerializeField] private float evacuateArrowDelay = 1.5f;
 
     [Header("Kitchen — Towel System")]
     [Tooltip("KITCHEN ONLY. Leave every field in this block EMPTY in Office " +
@@ -260,6 +301,20 @@ public class SimulationManager : MonoBehaviour
              "flame. There is no weaken stage — a smothered flame does not " +
              "shrink halfway, it starves.")]
     [SerializeField] private FireController fireController;
+    [Header("Office — Two-Fire Decision")]
+    [Tooltip("OFFICE ONLY. Leave EMPTY in Kitchen and Classroom.\n\n" +
+             "When assigned, the Squeeze and Sweep steps route through " +
+             "TwoFireDecision instead of the single Fire Controller above, so " +
+             "the player is graded on WHICH fire they attack first.\n\n" +
+             "When empty, every path below falls through to the original " +
+             "single-fire behaviour, unchanged. That is what protects " +
+             "Classroom — it uses TPASS and does reach these branches, so it " +
+             "relies on this field being empty.\n\n" +
+             "KITCHEN CANNOT BE AFFECTED EITHER WAY. Its step names contain " +
+             "no 'Squeeze' or 'Sweep', so it never reaches the branches that " +
+             "read this field at all.")]
+
+    [SerializeField] private TwoFireDecision twoFireDecision;
 
     [Header("Return to Rest (after the fire is out)")]
     [Tooltip("Seconds for the hose and lever to settle back to rest. This is a FADE " +
@@ -329,6 +384,14 @@ public class SimulationManager : MonoBehaviour
     // later step claims the left hand first, which clears it early and makes
     // PullSequence skip its release. Second guard on the Pull -> Aim bug.
     private bool pullSequenceOwnsHand = false;
+
+    // The delayed arrow reveal, held so it can be cancelled if the run ends
+    // during the wait.
+    private Coroutine evacuateArrowRoutine;
+
+    // TRUE only while THIS script is the one showing the arrow. See the note
+    // above HideEvacuateArrow for why that distinction matters.
+    private bool evacuateArrowShown = false;
 
     // --- PUBLIC READ-ONLY PROPERTIES ---
     public float TimeRemaining => timeRemaining;
@@ -444,6 +507,11 @@ public class SimulationManager : MonoBehaviour
 
     private void ResetRuntimeState()
     {
+        // No exit arrow left over from a previous run. Guarded by
+        // evacuateArrowShown, so this is a no-op when Phase 1 is the one
+        // using the shared arrow.
+        HideEvacuateArrow();
+
         // Bring the pin back — it was hidden last run.
         if (pinObject != null) pinObject.SetActive(true);
 
@@ -460,6 +528,9 @@ public class SimulationManager : MonoBehaviour
         // buttons live.
         ResetKitchenState();
 
+        // OFFICE — clear the recorded fire choice and put both fires back.
+        // No-op when null, which is Kitchen and Classroom.
+        if (twoFireDecision != null) twoFireDecision.ResetForReplay();
         // CRITICAL — see the header note. Without this a replay inherits
         // HoseLayer and LeverLayer at weight 0 and moves nothing, silently.
         RestoreLayerWeights();
@@ -608,7 +679,16 @@ public class SimulationManager : MonoBehaviour
 
         // maxStep, not a hardcoded 8 — Kitchen's sequence is shorter.
         if (currentStep < maxStep)
+        {
             currentStep++;
+
+            // The last step is Evacuate in BOTH sequences — 8 in Office, 5 in
+            // Kitchen. Reaching it is the cue to point at the exit. Reading
+            // maxStep rather than matching on the step NAME means this works
+            // in every environment without knowing which enum it uses.
+            if (currentStep >= maxStep)
+                ShowEvacuateArrow();
+        }
     }
 
     // -------------------------------------------------------
@@ -621,7 +701,19 @@ public class SimulationManager : MonoBehaviour
         RegisterWrongAction(step.ToString(), chosenAction, timePenalty, tip);
     }
 
-    public void RegisterWrongAction(string stepName, string chosenAction, float timePenalty, string tip)
+    // showTipDirectly — OFFICE TWO-FIRE DECISION ONLY.
+    //
+    // Normally the red row shows the hint for the CURRENT step, because a
+    // wrong tap means the player is on the wrong step and needs pointing at
+    // the right one.
+    //
+    // A fire choice is different: the player performed the RIGHT step, on the
+    // wrong target. The step hint would tell them to do what they just did.
+    // With this true, the caller's own tip is shown instead.
+    //
+    // Defaults to false, so every existing call site — Office, Classroom,
+    // Kitchen, and the enum overload above — behaves exactly as before.
+    public void RegisterWrongAction(string stepName, string chosenAction, float timePenalty, string tip, bool showTipDirectly = false)
     {
         if (!simActive) return;
 
@@ -660,7 +752,7 @@ public class SimulationManager : MonoBehaviour
         // "-0s" would read as if wrong actions were free.
         if (ActionFeedbackManager.Instance != null)
             ActionFeedbackManager.Instance.ShowWrong(
-                StepNames.Hint(currentStep, useKitchenHints),
+                showTipDirectly ? tip : StepNames.Hint(currentStep, useKitchenHints),
                 Mathf.RoundToInt(timePenalty));
 
         // COOLDOWN. The clamp above stops the RECORDED penalty exceeding the
@@ -845,15 +937,19 @@ public class SimulationManager : MonoBehaviour
                 Debug.Log("[SimulationManager] Nozzle spray started.");
             }
 
-            // FIRE: shrinks partway, and the buttons stay locked until the
-            // shrink is VISIBLE. Without the wait, tapping Sweep straight
-            // after Squeeze meant ExtinguishFire's StopAllCoroutines killed
-            // the weaken mid-fade — the fire simply died, and the point that
-            // one burst is not enough never reached the screen.
+            // OFFICE TWO-FIRE DECISION. When assigned, TwoFireDecision picks
+            // the fire nearest the player, grades that choice, and weakens
+            // whichever one they targeted.
             //
-            // The unlock comes from FireController's callback, so the
-            // duration (squeezeDuration) stays in one place.
-            if (fireController != null)
+            // When NULL — Classroom, or Office before the two fires are
+            // placed — this falls straight through to the original line
+            // below, unchanged.
+            //
+            // Kitchen never reaches this branch: no KitchenStep name contains
+            // "Squeeze".
+            if (twoFireDecision != null)
+                twoFireDecision.HandleSqueeze(name, EndStepLockout);
+            else if (fireController != null)
                 fireController.WeakenFire(EndStepLockout);
             else
                 EndStepLockout();
@@ -869,7 +965,18 @@ public class SimulationManager : MonoBehaviour
             // ticked, and that HoseMask has no lever bones in it.
             PlayHoseClip(clipSweep);
 
-            if (fireController != null)
+            // OFFICE TWO-FIRE DECISION. Kills the fire chosen at Squeeze —
+            // NOT whichever one the player happens to be nearest now. The
+            // target is locked for the whole discharge, which matches the
+            // doctrine already in this file's header: you do not re-aim
+            // while discharging.
+            //
+            // OnFireIsOut still runs exactly as before...
+            if (twoFireDecision != null)
+            {
+                twoFireDecision.HandleSweep(OnFireIsOut);
+            }
+            else if (fireController != null)
             {
                 fireController.ExtinguishFire(OnFireIsOut);
             }
@@ -997,6 +1104,92 @@ public class SimulationManager : MonoBehaviour
             // completion callback.
             EndStepLockout();
         }
+    }
+
+    // -------------------------------------------------------
+    // EVACUATE ARROW
+    //
+    // The only marker arrow in Phase 2. Raised once the final step becomes
+    // the current step, pointed at exitTarget, and torn down by every path
+    // that ends a run.
+    //
+    // WHY THE DELAY. In Office, Sweep registers as correct the moment it is
+    // tapped — but FireController then spends about a second fading the
+    // flames. Showing the arrow on that same frame reads as "run now" while
+    // the fire is still visibly burning, which is the opposite of what the
+    // drill teaches.
+    //
+    // WHY evacuateArrowShown EXISTS. HideEvacuateArrow is called from
+    // ResetRuntimeState, which runs in Start() — INCLUDING when the scene
+    // loads in Phase 1. Without the flag it would call Hide() on the shared
+    // MarkerArrowManager and could clear a Phase 1 hazard arrow that has
+    // nothing to do with this script. The flag makes Hide a no-op unless
+    // this script is the one that raised the arrow.
+    // -------------------------------------------------------
+    private void ShowEvacuateArrow()
+    {
+        if (!useEvacuateArrow) return;
+
+        // OFFICE TWO-FIRE DECISION. A wrong fire choice ends the run in a loss
+        // a few seconds from now. Pointing the player at a door they are about
+        // to lose to would read as a bug, not a lesson.
+        //
+        // Null in Kitchen and Classroom, so this is a no-op there.
+        if (twoFireDecision != null && twoFireDecision.WrongFireChosen) return;
+
+        if (exitTarget == null)
+        {
+            Debug.LogWarning("[SimulationManager] Evacuate step reached but no Exit " +
+                             "Target assigned — no arrow shown. Assign the Door in " +
+                             "the Inspector.");
+            return;
+        }
+
+        if (evacuateArrowRoutine != null)
+            StopCoroutine(evacuateArrowRoutine);
+
+        evacuateArrowRoutine = StartCoroutine(ShowEvacuateArrowAfterDelay());
+    }
+
+    private IEnumerator ShowEvacuateArrowAfterDelay()
+    {
+        if (evacuateArrowDelay > 0f)
+            yield return new WaitForSeconds(evacuateArrowDelay);
+
+        evacuateArrowRoutine = null;
+
+        // The run can end DURING the delay — the timer expiring, or a penalty
+        // driving the clock to zero. Without this check the arrow would pop up
+        // over the results screen after the simulation was already over.
+        if (!simActive) yield break;
+
+        if (MarkerArrowManager.Instance == null)
+        {
+            Debug.LogWarning("[SimulationManager] No MarkerArrowManager in this scene " +
+                             "— no evacuate arrow. Add one, or untick Use Evacuate Arrow.");
+            yield break;
+        }
+
+        MarkerArrowManager.Instance.PointAt(exitTarget);
+        evacuateArrowShown = true;
+
+        Debug.Log($"[SimulationManager] Evacuate arrow on '{exitTarget.name}'.");
+    }
+
+    private void HideEvacuateArrow()
+    {
+        if (evacuateArrowRoutine != null)
+        {
+            StopCoroutine(evacuateArrowRoutine);
+            evacuateArrowRoutine = null;
+        }
+
+        // Only clear an arrow THIS script raised — see the header note.
+        if (!evacuateArrowShown) return;
+        evacuateArrowShown = false;
+
+        if (MarkerArrowManager.Instance != null)
+            MarkerArrowManager.Instance.Hide();
     }
 
     // -------------------------------------------------------
@@ -1246,6 +1439,11 @@ public class SimulationManager : MonoBehaviour
         // leave the flag set for whatever comes next.
         EndStepLockout();
         pullSequenceOwnsHand = false;
+
+        // The run is over — win, loss or timeout. The exit arrow has nothing
+        // left to point at, and would otherwise hang over the results screen.
+        // Also cancels a delayed reveal still counting down.
+        HideEvacuateArrow();
 
         GameModeManager modeManager = FindFirstObjectByType<GameModeManager>();
         if (modeManager != null)
