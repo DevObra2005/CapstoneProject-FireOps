@@ -382,7 +382,7 @@ public class TwoFireDecision : MonoBehaviour
         Debug.Log("[TwoFireDecision] LOSS — the far fire was cleared first and the " +
                   "door fire spread across the only exit.");
 
-        SimulationManager.Instance.EndSimulation(won: false);
+        SimulationManager.Instance.EndSimulation(won: false, failReason: "wrong_decision");
     }
 
     // -------------------------------------------------------
