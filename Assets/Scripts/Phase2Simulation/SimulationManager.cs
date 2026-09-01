@@ -19,16 +19,44 @@ using UnityEngine.Events;
 //   7 TPASS Sweep        -> HoseLayer, then everything relaxes
 //   8 Evacuate           -> completed by Door, not RegisterCorrectAction
 //
-// STEP BREAKDOWN (Kitchen — WCTL):
-//   Sound Alarm    -> matched by name, same Alarm branch
-//   Grab Towel     -> matched by name, same Grab branch
-//   WCTL Wet       -> TowelDipController: dip, soak, wring, lift
-//   WCTL Cover     -> no choreography yet
-//   WCTL Turn Off  -> no choreography yet
-//   Evacuate       -> completed by Door
+// STEP BREAKDOWN (Kitchen — WCTL, 5 steps):
+//   1 Grab Towel     -> TowelGrab: flies from the sink into both hands
+//   2 WCTL Wet       -> TowelDipController: dip, soak, wring, lift
+//   3 WCTL Cover     -> TowelCoverController: throw, contact, settle
+//   4 WCTL Turn Off  -> KitchenValveController: reach, turn, release
+//   5 Evacuate       -> completed by Door
 //
-// The exact numbering lives in KitchenStep.cs and in maxStep below — keep
-// those two in agreement or the run ends early.
+// THERE IS NO SOUND ALARM STEP IN KITCHEN. This is a home scenario, not a
+// workplace with a panel on the wall — BFP doctrine for an LPG fire at home
+// starts with smothering, not with raising an alarm.
+//
+// Nothing had to be REMOVED from this file for that. PlayClipForStep matches
+// on SUBSTRINGS, and no KitchenStep name contains "Alarm", so that branch is
+// simply unreachable in the Kitchen scene. It stays because Office needs it.
+//
+// What DOES have to be right is the Inspector:
+//   maxStep = 5   in Kitchen  (KitchenStep runs 1..5)
+//   maxStep = 8   in Office and Classroom
+//   pressAlarm    EMPTY in Kitchen
+//
+// A Kitchen scene left at maxStep 8 keeps climbing past Evacuate and the run
+// can never complete.
+//
+// -------------------------------------------------------
+// THE ONLY MARKER ARROW IN PHASE 2 IS THE EVACUATE ONE.
+//
+// Phase 1 is the learning module and guides every action. Phase 2 is the
+// ASSESSMENT — it feeds game_sessions, the penalty score, the pass threshold
+// and the certificate. An arrow pointing at the alarm, then the extinguisher,
+// then the fire would let a player finish a run without knowing TPASS at all,
+// and the score would stop measuring competence.
+//
+// Evacuate is the deliberate exception. Finding the exit is a NAVIGATION
+// problem, not a knowledge one — the player may never have been in this room
+// before, and every scored decision has already been made by that point.
+//
+// The defensible line, in one sentence: guidance in learning, none in
+// assessment, except wayfinding for evacuation.
 //
 // -------------------------------------------------------
 // HOW ONE MANAGER SERVES BOTH SEQUENCES
@@ -40,15 +68,15 @@ using UnityEngine.Events;
 // would break that comparison silently, with no error to follow.
 //
 // This file never cared which enum a step came from: every use was
-// step.ToString(). So the enum methods now forward to STRING methods, and
-// Kitchen calls those directly. Office and Classroom call sites are unchanged.
+// step.ToString(). So the enum methods forward to STRING methods, and Kitchen
+// calls those directly. Office and Classroom call sites are unchanged.
 //
 // TWO INSPECTOR FIELDS carry the difference:
-//   maxStep         — 8 for TPASS, fewer for WCTL
+//   maxStep         — 8 for TPASS, 5 for WCTL
 //   useKitchenHints — which wrong-action hint table to read
 //
-// PlayClipForStep matches on SUBSTRINGS, which is why Kitchen gets two
-// branches for free: "SoundAlarm" hits Alarm, "GrabTowel" hits Grab.
+// PlayClipForStep matches on SUBSTRINGS, which is why Kitchen gets its
+// branches for free: "GrabTowel" hits Grab, "WCTL_Wet" hits Wet.
 //
 // -------------------------------------------------------
 // THINGS THAT COST DAYS TO LEARN — do not undo these:
@@ -86,7 +114,14 @@ using UnityEngine.Events;
 // * HANDS NEED NO CLIPS. Grip_Pin is parented to Pin, Grip_Nozzle to
 //   a hose bone. Those are the IK targets — move the part and the
 //   hand follows for free. One system animates the prop; IK keeps
-//   the hands attached.
+//   the hands attached. Kitchen uses the same trick THREE times:
+//   GripPoint_R and GripPoint_L under Towel_A1 and Towel_B1, and
+//   ValveGrip under Regulator_Valve.
+//
+// * EVERY SCRIPT THAT MUTATES RUN STATE NEEDS ITS OWN RESET, AND
+//   EVERY ONE MUST BE CALLED. Kitchen has SEVEN. See ResetKitchenState
+//   below — the failure mode for each is silent, and three of them
+//   stall the run outright on the second attempt.
 // -------------------------------------------------------
 
 public class SimulationManager : MonoBehaviour
@@ -101,7 +136,7 @@ public class SimulationManager : MonoBehaviour
 
     [Header("Environment")]
     [Tooltip("How many steps this environment has. Office and Classroom run " +
-             "TPASS across 8. Kitchen runs WCTL across fewer.\n\n" +
+             "TPASS across 8. Kitchen runs WCTL across 5.\n\n" +
              "The step counter stops climbing here, so a wrong value either " +
              "ends the run early or leaves it unfinishable. It MUST match the " +
              "highest value in the enum that scene uses.\n\n" +
@@ -115,19 +150,83 @@ public class SimulationManager : MonoBehaviour
              "lookup needs to know which sequence it is describing.")]
     [SerializeField] private bool useKitchenHints = false;
 
-    [Header("Kitchen — Wet Step")]
-    [Tooltip("Plays the dip, soak, wring and lift on the Wet step. Leave empty " +
-             "in Office and Classroom — the branch falls through to an " +
-             "immediate unlock if it is null.")]
+    [Header("Evacuate — Marker Arrow")]
+    [Tooltip("Show the green marker arrow on the exit once the fire is dealt " +
+             "with and the Evacuate step becomes active.\n\n" +
+             "This is the ONLY arrow in Phase 2. TPASS and WCTL steps stay " +
+             "unguided on purpose — see the header note. Finding the exit is " +
+             "navigation, not knowledge, so it gives away nothing being scored.")]
+    [SerializeField] private bool useEvacuateArrow = true;
+
+    [Tooltip("The exit the player must reach. Assign the Door object.\n\n" +
+             "The door's renderer bounds reach the top of the frame, so a " +
+             "bounds-based arrow floats near the ceiling. Put a " +
+             "MarkerArrowAnchor on the door with an empty child positioned in " +
+             "the DOORWAY at eye level, where a running player will see it.")]
+    [SerializeField] private Transform exitTarget;
+
+    [Tooltip("Seconds after the final step becomes active before the arrow " +
+             "appears.\n\n" +
+             "OFFICE NEEDS A DELAY. Sweep registers as correct while the fire " +
+             "is still visibly fading — an arrow at that instant tells the " +
+             "player to run before the flames are out, which is the opposite " +
+             "of the drill. Around 1.5 lets the fire die first.\n\n" +
+             "KITCHEN can be shorter. The fire dies on towel CONTACT, which is " +
+             "already finished by the time the Turn Off step completes.")]
+    [SerializeField] private float evacuateArrowDelay = 1.5f;
+
+    [Header("Kitchen — Towel System")]
+    [Tooltip("KITCHEN ONLY. Leave every field in this block EMPTY in Office " +
+             "and Classroom — every call to them is null-guarded, so an empty " +
+             "slot costs nothing there.\n\n" +
+             "In KITCHEN, all seven must be assigned. Five of them exist purely " +
+             "so a REPLAY works: see ResetKitchenState in this file for what " +
+             "breaks, silently, when one is missed.")]
     [SerializeField] private TowelDipController towelDip;
+
+    [Tooltip("Throws the towel onto the burning regulator and leaves it there.")]
     [SerializeField] private TowelCoverController towelCover;
+
+    [Tooltip("Flies the towel from the sink into both hands on the Grab step. " +
+             "Its reset is what puts the towel BACK on the sink — without it, " +
+             "attempt two starts with the towel already in hand, nothing to " +
+             "tap, and the run stalls on step 1 with no error.")]
+    [SerializeField] private TowelGrab towelGrab;
+
+    [Tooltip("Owns the IsWet flag and the darkening. Its reset is what makes " +
+             "the dry-cloth guard fire again on a replay — miss it and the " +
+             "player can skip the Wet step entirely on attempt two.")]
+    [SerializeField] private TowelWetnessController towelWetness;
+
+    [Tooltip("The tap target on the towel. Reset re-enables it and clears the " +
+             "hover outline.")]
+    [SerializeField] private KitchenInteractable towelInteractable;
+
+    [Tooltip("The WCTL buttons. Each correct tap greys its own button out and " +
+             "nothing ever put them back — attempt two used to start with all " +
+             "three dead.")]
+    [SerializeField] private WCTLButtonManager wctlButtons;
+
+    [Header("Kitchen — Turn Off Step")]
+    [Tooltip("Reaches the RIGHT hand to the LPG regulator, turns the valve " +
+             "shut, and releases. Sits on LPG_Assembly.\n\n" +
+             "Its reset re-opens the valve. Without it a second attempt starts " +
+             "with the gas already off — the step still registers and still " +
+             "logs correct, but the player turns a wheel that is visibly " +
+             "already closed, and the one action that actually ends a gas fire " +
+             "stops being demonstrated.\n\n" +
+             "Leave EMPTY in Office and Classroom.")]
+    [SerializeField] private KitchenValveController valveTurn;
 
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
 
     [Header("Alarm Press Animation")]
     [Tooltip("Plays the right-hand reach and press on Step 1. Leave empty " +
-             "to skip the animation — the step still registers.")]
+             "to skip the animation — the step still registers.\n\n" +
+             "LEAVE EMPTY IN KITCHEN. There is no alarm step there, so this " +
+             "would never fire anyway — but an assigned reference would still " +
+             "have ResetState() called on it every run for no reason.")]
     [SerializeField] private PressAlarmController pressAlarm;
 
     [Header("Extinguisher Animation")]
@@ -195,14 +294,27 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private ExtinguisherSprayVFX sprayVFX;
 
     [Header("Fire Reaction")]
-    [Tooltip("WeakenFire() on Squeeze, ExtinguishFire() on Sweep — the fire shrinks " +
-             "partway, then dies. Both take a callback:\n\n" +
-             "WeakenFire's unlocks the buttons once the shrink is VISIBLE, so Sweep " +
-             "cannot cancel the weaken mid-fade and skip the lesson that one burst " +
-             "is not enough.\n\n" +
-             "ExtinguishFire's stops the spray and relaxes everything once the " +
-             "flames are actually out.")]
+    [Tooltip("OFFICE: WeakenFire() on Squeeze, ExtinguishFire() on Sweep — the " +
+             "fire shrinks partway, then dies.\n\n" +
+             "KITCHEN: ExtinguishFire() fires from TowelCoverController's " +
+             "onContact callback, at the exact frame the cloth touches the " +
+             "flame. There is no weaken stage — a smothered flame does not " +
+             "shrink halfway, it starves.")]
     [SerializeField] private FireController fireController;
+    [Header("Office — Two-Fire Decision")]
+    [Tooltip("OFFICE ONLY. Leave EMPTY in Kitchen and Classroom.\n\n" +
+             "When assigned, the Squeeze and Sweep steps route through " +
+             "TwoFireDecision instead of the single Fire Controller above, so " +
+             "the player is graded on WHICH fire they attack first.\n\n" +
+             "When empty, every path below falls through to the original " +
+             "single-fire behaviour, unchanged. That is what protects " +
+             "Classroom — it uses TPASS and does reach these branches, so it " +
+             "relies on this field being empty.\n\n" +
+             "KITCHEN CANNOT BE AFFECTED EITHER WAY. Its step names contain " +
+             "no 'Squeeze' or 'Sweep', so it never reaches the branches that " +
+             "read this field at all.")]
+
+    [SerializeField] private TwoFireDecision twoFireDecision;
 
     [Header("Return to Rest (after the fire is out)")]
     [Tooltip("Seconds for the hose and lever to settle back to rest. This is a FADE " +
@@ -238,8 +350,10 @@ public class SimulationManager : MonoBehaviour
              "So the lockout is force-cleared after this many seconds and a warning " +
              "is logged naming the step. A missed unlock becomes a delay you can " +
              "find in the Console rather than a frozen simulation you cannot.\n\n" +
-             "RAISED FROM 3 TO 4 FOR KITCHEN: the towel dip runs about 2.9s, and a " +
-             "valve set below that would fire mid-dip and unlock the buttons early. " +
+             "KITCHEN NEEDS 4 AT MINIMUM. The towel dip runs about 2.9s, and a " +
+             "valve set to 3 fires with a tenth of a second to spare — one frame " +
+             "hitch and it trips mid-dip. The Cover step runs about 1.65s and the " +
+             "valve turn about 1.75s, both comfortably inside.\n\n" +
              "If you ever see the warning, do NOT raise this further — find the " +
              "missing unlock.")]
     [SerializeField] private float maxStepLockout = 4f;
@@ -270,6 +384,14 @@ public class SimulationManager : MonoBehaviour
     // later step claims the left hand first, which clears it early and makes
     // PullSequence skip its release. Second guard on the Pull -> Aim bug.
     private bool pullSequenceOwnsHand = false;
+
+    // The delayed arrow reveal, held so it can be cancelled if the run ends
+    // during the wait.
+    private Coroutine evacuateArrowRoutine;
+
+    // TRUE only while THIS script is the one showing the arrow. See the note
+    // above HideEvacuateArrow for why that distinction matters.
+    private bool evacuateArrowShown = false;
 
     // --- PUBLIC READ-ONLY PROPERTIES ---
     public float TimeRemaining => timeRemaining;
@@ -309,7 +431,7 @@ public class SimulationManager : MonoBehaviour
         {
             Debug.LogWarning("[SimulationManager] Max Step was 0 — falling back to 8. " +
                              "Set it explicitly in the Inspector to match this " +
-                             "scene's step enum.");
+                             "scene's step enum. Kitchen should be 5.");
             maxStep = 8;
         }
     }
@@ -325,8 +447,71 @@ public class SimulationManager : MonoBehaviour
         ResetRuntimeState();
     }
 
+    // -------------------------------------------------------
+    // KITCHEN RESET — all seven, in dependency order.
+    //
+    // Every script that MUTATES run state needs its own reset, and every one
+    // must be called. Each failure below is SILENT — no error, no warning,
+    // just a second attempt that behaves wrongly:
+    //
+    //   towelGrab          the towel stays in the player's hands and the sink
+    //                      is empty. There is nothing to tap, the Grab step
+    //                      never registers, and the run sits on step 1 until
+    //                      the timer kills it.
+    //
+    //   towelWetness       the towel starts WET. WCTLButtonManager's dry-cloth
+    //                      guard never fires, so the player taps straight to
+    //                      Cover and the entire W of WCTL stops being taught.
+    //                      The most damaging one, because the run still
+    //                      "works" — it just teaches the wrong thing.
+    //
+    //   valveTurn          the gas is already off. Same shape of failure: the
+    //                      step registers, the log says correct, and the player
+    //                      turns a wheel that was already closed. It also
+    //                      leaves RightArmIk still pointed at ValveGrip, so the
+    //                      next run's towel grab would fade the right arm in
+    //                      toward the LPG tank instead of the towel.
+    //
+    //   wctlButtons        each correct tap greys its own button out, and
+    //                      nothing ever put them back. Attempt two starts with
+    //                      Wet, Cover and Turn Off all dead.
+    //
+    //   towelInteractable  the tap target stays disabled or still outlined.
+    //
+    //   towelDip           a run abandoned mid-dip leaves the towel in the sink
+    //                      pose AND the coroutine handle set — so PlayDip's own
+    //                      guard silently refuses the next attempt's WET tap.
+    //
+    //   towelCover         the towel is still parented to the LPG tank, so the
+    //                      player starts empty-handed.
+    //
+    // ORDER MATTERS IN ONE PLACE. towelDip and towelCover restore LOCAL poses
+    // relative to whatever the towel is parented to. towelGrab then rewrites
+    // the parent and a WORLD pose, so it has to run after them — otherwise the
+    // two controllers would write local coordinates against the sink.
+    //
+    // valveTurn is independent of the towel and can sit anywhere in the list.
+    //
+    // No-ops entirely in Office and Classroom, where all seven are null.
+    // -------------------------------------------------------
+    private void ResetKitchenState()
+    {
+        if (towelDip != null) towelDip.ResetToRest();
+        if (towelCover != null) towelCover.ResetToRest();
+        if (towelGrab != null) towelGrab.ResetToTimba();
+        if (towelWetness != null) towelWetness.ResetToDry();
+        if (towelInteractable != null) towelInteractable.ResetForReplay();
+        if (valveTurn != null) valveTurn.ResetToStart();
+        if (wctlButtons != null) wctlButtons.ResetForReplay();
+    }
+
     private void ResetRuntimeState()
     {
+        // No exit arrow left over from a previous run. Guarded by
+        // evacuateArrowShown, so this is a no-op when Phase 1 is the one
+        // using the shared arrow.
+        HideEvacuateArrow();
+
         // Bring the pin back — it was hidden last run.
         if (pinObject != null) pinObject.SetActive(true);
 
@@ -339,18 +524,13 @@ public class SimulationManager : MonoBehaviour
         // Kill any spray still running.
         if (sprayVFX != null) sprayVFX.Stop();
 
-        // KITCHEN — put the towel back in the hand and dry it out.
-        //
-        // Without this, a run abandoned mid-dip leaves the towel stuck in the
-        // sink pose AND the dip coroutine handle still set — so the next
-        // attempt's WET tap is silently refused by PlayDip's own guard. The
-        // button would appear to do nothing, with no error to follow.
-        //
-        // ResetToRest also calls through to dry the towel, so IsWet goes back
-        // to false and the Cover guard fires again on the replay.
-        if (towelDip != null) towelDip.ResetToRest();
-        if (towelCover != null) towelCover.ResetToRest();
+        // KITCHEN — towel back on the sink, dry, tappable, valve open,
+        // buttons live.
+        ResetKitchenState();
 
+        // OFFICE — clear the recorded fire choice and put both fires back.
+        // No-op when null, which is Kitchen and Classroom.
+        if (twoFireDecision != null) twoFireDecision.ResetForReplay();
         // CRITICAL — see the header note. Without this a replay inherits
         // HoseLayer and LeverLayer at weight 0 and moves nothing, silently.
         RestoreLayerWeights();
@@ -499,7 +679,16 @@ public class SimulationManager : MonoBehaviour
 
         // maxStep, not a hardcoded 8 — Kitchen's sequence is shorter.
         if (currentStep < maxStep)
+        {
             currentStep++;
+
+            // The last step is Evacuate in BOTH sequences — 8 in Office, 5 in
+            // Kitchen. Reaching it is the cue to point at the exit. Reading
+            // maxStep rather than matching on the step NAME means this works
+            // in every environment without knowing which enum it uses.
+            if (currentStep >= maxStep)
+                ShowEvacuateArrow();
+        }
     }
 
     // -------------------------------------------------------
@@ -512,7 +701,19 @@ public class SimulationManager : MonoBehaviour
         RegisterWrongAction(step.ToString(), chosenAction, timePenalty, tip);
     }
 
-    public void RegisterWrongAction(string stepName, string chosenAction, float timePenalty, string tip)
+    // showTipDirectly — OFFICE TWO-FIRE DECISION ONLY.
+    //
+    // Normally the red row shows the hint for the CURRENT step, because a
+    // wrong tap means the player is on the wrong step and needs pointing at
+    // the right one.
+    //
+    // A fire choice is different: the player performed the RIGHT step, on the
+    // wrong target. The step hint would tell them to do what they just did.
+    // With this true, the caller's own tip is shown instead.
+    //
+    // Defaults to false, so every existing call site — Office, Classroom,
+    // Kitchen, and the enum overload above — behaves exactly as before.
+    public void RegisterWrongAction(string stepName, string chosenAction, float timePenalty, string tip, bool showTipDirectly = false)
     {
         if (!simActive) return;
 
@@ -551,7 +752,7 @@ public class SimulationManager : MonoBehaviour
         // "-0s" would read as if wrong actions were free.
         if (ActionFeedbackManager.Instance != null)
             ActionFeedbackManager.Instance.ShowWrong(
-                StepNames.Hint(currentStep, useKitchenHints),
+                showTipDirectly ? tip : StepNames.Hint(currentStep, useKitchenHints),
                 Mathf.RoundToInt(timePenalty));
 
         // COOLDOWN. The clamp above stops the RECORDED penalty exceeding the
@@ -577,9 +778,11 @@ public class SimulationManager : MonoBehaviour
     // survives a rename or reorder — it only cares that the name contains
     // "Alarm", "Twist", "Pull", and so on.
     //
-    // That substring matching is also what lets Kitchen share this method:
-    // "SoundAlarm" and "GrabTowel" hit the same first two branches, and
-    // "WCTL_Wet" hits the Wet branch further down.
+    // That substring matching is also what lets Kitchen share this method.
+    // "GrabTowel" hits the Grab branch; "WCTL_Wet", "WCTL_Cover" and
+    // "WCTL_TurnOff" hit their own branches further down. NO KitchenStep NAME
+    // CONTAINS "Alarm", which is why Kitchen needs no edit here to skip the
+    // alarm step — that branch is simply unreachable there.
     //
     // ORDER MATTERS. The alarm press is a HAND animation and does not use
     // extinguisherAnimator at all, so it must be dispatched BEFORE the
@@ -594,6 +797,10 @@ public class SimulationManager : MonoBehaviour
     private void PlayClipForStep(string name)
     {
         // --- HAND ANIMATION (no extinguisher Animator involved) ---
+        //
+        // OFFICE AND CLASSROOM ONLY. Kitchen never reaches this branch: its
+        // step names are GrabTowel, WCTL_Wet, WCTL_Cover, WCTL_TurnOff and
+        // Evacuate, none of which contain "Alarm".
         if (name.Contains("Alarm"))
         {
             if (pressAlarm != null)
@@ -603,19 +810,25 @@ public class SimulationManager : MonoBehaviour
             }
 
             // No lockout needed: the step buttons are not visible on step 1,
-            // and the next action is a world tap on the extinguisher (or the
-            // towel), which pressAlarm.ResetState() below already handles.
+            // and the next action is a world tap on the extinguisher.
             EndStepLockout();
             return;
         }
 
         if (name.Contains("Grab"))
         {
+            // Catches BOTH "GrabExtinguisher" (Office) and "GrabTowel"
+            // (Kitchen). Neither needs anything from this method — the flight
+            // is owned by ExtinguisherGrab and TowelGrab respectively, both
+            // started from their own Interactable on the correct tap.
+            //
             // Cancel any press still in flight. Nothing stops the player
             // tapping Grab while the arm is still withdrawing — if that
             // happened, PressAlarmController would fade rightArmIK.weight
             // 1 -> 0 while ExtinguisherGrab fades the SAME value 0 -> 1.
             // Two writers on one value, which stutters or snaps the arm.
+            //
+            // Null in Kitchen, so this is a no-op there.
             if (pressAlarm != null)
             {
                 pressAlarm.ResetState();
@@ -724,15 +937,19 @@ public class SimulationManager : MonoBehaviour
                 Debug.Log("[SimulationManager] Nozzle spray started.");
             }
 
-            // FIRE: shrinks partway, and the buttons stay locked until the
-            // shrink is VISIBLE. Without the wait, tapping Sweep straight
-            // after Squeeze meant ExtinguishFire's StopAllCoroutines killed
-            // the weaken mid-fade — the fire simply died, and the point that
-            // one burst is not enough never reached the screen.
+            // OFFICE TWO-FIRE DECISION. When assigned, TwoFireDecision picks
+            // the fire nearest the player, grades that choice, and weakens
+            // whichever one they targeted.
             //
-            // The unlock comes from FireController's callback, so the
-            // duration (squeezeDuration) stays in one place.
-            if (fireController != null)
+            // When NULL — Classroom, or Office before the two fires are
+            // placed — this falls straight through to the original line
+            // below, unchanged.
+            //
+            // Kitchen never reaches this branch: no KitchenStep name contains
+            // "Squeeze".
+            if (twoFireDecision != null)
+                twoFireDecision.HandleSqueeze(name, EndStepLockout);
+            else if (fireController != null)
                 fireController.WeakenFire(EndStepLockout);
             else
                 EndStepLockout();
@@ -748,7 +965,18 @@ public class SimulationManager : MonoBehaviour
             // ticked, and that HoseMask has no lever bones in it.
             PlayHoseClip(clipSweep);
 
-            if (fireController != null)
+            // OFFICE TWO-FIRE DECISION. Kills the fire chosen at Squeeze —
+            // NOT whichever one the player happens to be nearest now. The
+            // target is locked for the whole discharge, which matches the
+            // doctrine already in this file's header: you do not re-aim
+            // while discharging.
+            //
+            // OnFireIsOut still runs exactly as before...
+            if (twoFireDecision != null)
+            {
+                twoFireDecision.HandleSweep(OnFireIsOut);
+            }
+            else if (fireController != null)
             {
                 fireController.ExtinguishFire(OnFireIsOut);
             }
@@ -792,10 +1020,29 @@ public class SimulationManager : MonoBehaviour
                                  "button will stay blocked.");
                 EndStepLockout();
             }
-
         }
         else if (name.Contains("Cover"))
         {
+            // KITCHEN — throw, contact, settle. About 1.65 seconds.
+            //
+            // TWO callbacks, and the split is the whole point.
+            //
+            // onContact fires at the exact frame the cloth reaches the flame.
+            // The fire dies THERE — not when the button was tapped, and not
+            // when the animation finishes. Either of those reads wrong: one
+            // kills the fire before anything touches it, the other leaves it
+            // burning through a cloth already lying on top of it.
+            //
+            // onComplete fires ~0.85s later, once the bone animation has
+            // finished its wrap and settle. THAT is when the buttons unlock,
+            // so the player cannot start the valve while the towel is still
+            // visibly dropping onto the tank.
+            //
+            // ExtinguishFire takes null here rather than OnFireIsOut, because
+            // OnFireIsOut is the EXTINGUISHER's teardown — spray off, thumb
+            // up, hose relaxed. None of that exists in Kitchen. Passing it
+            // would be harmless (every reference inside is null there) but it
+            // would also be a lie about what happens on this step.
             if (towelCover != null)
             {
                 towelCover.PlayCover(
@@ -804,32 +1051,156 @@ public class SimulationManager : MonoBehaviour
             }
             else
             {
+                Debug.LogWarning("[SimulationManager] Cover step reached with no " +
+                                 "TowelCoverController assigned — killing the fire " +
+                                 "without the animation.");
+
                 if (fireController != null) fireController.ExtinguishFire(null);
                 EndStepLockout();
             }
         }
-
-
+        else if (name.Contains("TurnOff"))
+        {
+            // KITCHEN — reach, turn, release. About 1.75 seconds.
+            //
+            // MUST SIT ABOVE THE CATCH-ALL BELOW. Anything after a bare else
+            // is unreachable, and a branch that never runs looks identical to
+            // a branch that runs and does nothing.
+            //
+            // The hand needs no separate animation. ValveGrip is a CHILD of
+            // Regulator_Valve, so rotating the valve orbits the marker and the
+            // IK constraint drags the wrist around with it — the same trick
+            // Grip_Pin uses on the extinguisher, and GripPoint_R on the towel.
+            //
+            // Same one-owner rule as the dip and the cover: the routine that
+            // holds the real duration also owns the unlock, so EndStepLockout
+            // is handed in rather than fired from a timer here.
+            //
+            // NOTE ON THE RIGHT ARM. By this point TowelCoverController has
+            // already faded both arm IKs to zero and released the fingers, so
+            // the arm is sitting in its FK rest pose with nothing competing
+            // for it. That is why the reach can be a plain weight fade rather
+            // than a travel from wherever the hand happened to be.
+            if (valveTurn != null)
+            {
+                valveTurn.PlayTurn(EndStepLockout);
+            }
+            else
+            {
+                Debug.LogWarning("[SimulationManager] Turn Off step reached with no " +
+                                 "KitchenValveController assigned — skipping the " +
+                                 "animation. The step still registers, but the valve " +
+                                 "will not move and the gas stays visibly on.");
+                EndStepLockout();
+            }
+        }
         else
         {
-            // Evacuate, WCTL Cover, WCTL Turn Off, or any step with no
-            // animation yet. Nothing to wait for.
+            // Evacuate, or any step with no animation yet. Nothing to wait for.
             //
-            // When Cover and Turn Off get their choreography, add branches
-            // ABOVE this one — anything after a catch-all else is
-            // unreachable — and make each new branch clear the lockout
-            // itself, either directly or through a completion callback.
+            // When a new step gets its choreography, add a branch ABOVE this
+            // one — anything after a catch-all else is unreachable — and make
+            // it clear the lockout itself, either directly or through a
+            // completion callback.
             EndStepLockout();
         }
+    }
 
+    // -------------------------------------------------------
+    // EVACUATE ARROW
+    //
+    // The only marker arrow in Phase 2. Raised once the final step becomes
+    // the current step, pointed at exitTarget, and torn down by every path
+    // that ends a run.
+    //
+    // WHY THE DELAY. In Office, Sweep registers as correct the moment it is
+    // tapped — but FireController then spends about a second fading the
+    // flames. Showing the arrow on that same frame reads as "run now" while
+    // the fire is still visibly burning, which is the opposite of what the
+    // drill teaches.
+    //
+    // WHY evacuateArrowShown EXISTS. HideEvacuateArrow is called from
+    // ResetRuntimeState, which runs in Start() — INCLUDING when the scene
+    // loads in Phase 1. Without the flag it would call Hide() on the shared
+    // MarkerArrowManager and could clear a Phase 1 hazard arrow that has
+    // nothing to do with this script. The flag makes Hide a no-op unless
+    // this script is the one that raised the arrow.
+    // -------------------------------------------------------
+    private void ShowEvacuateArrow()
+    {
+        if (!useEvacuateArrow) return;
 
+        // OFFICE TWO-FIRE DECISION. A wrong fire choice ends the run in a loss
+        // a few seconds from now. Pointing the player at a door they are about
+        // to lose to would read as a bug, not a lesson.
+        //
+        // Null in Kitchen and Classroom, so this is a no-op there.
+        if (twoFireDecision != null && twoFireDecision.WrongFireChosen) return;
+
+        if (exitTarget == null)
+        {
+            Debug.LogWarning("[SimulationManager] Evacuate step reached but no Exit " +
+                             "Target assigned — no arrow shown. Assign the Door in " +
+                             "the Inspector.");
+            return;
+        }
+
+        if (evacuateArrowRoutine != null)
+            StopCoroutine(evacuateArrowRoutine);
+
+        evacuateArrowRoutine = StartCoroutine(ShowEvacuateArrowAfterDelay());
+    }
+
+    private IEnumerator ShowEvacuateArrowAfterDelay()
+    {
+        if (evacuateArrowDelay > 0f)
+            yield return new WaitForSeconds(evacuateArrowDelay);
+
+        evacuateArrowRoutine = null;
+
+        // The run can end DURING the delay — the timer expiring, or a penalty
+        // driving the clock to zero. Without this check the arrow would pop up
+        // over the results screen after the simulation was already over.
+        if (!simActive) yield break;
+
+        if (MarkerArrowManager.Instance == null)
+        {
+            Debug.LogWarning("[SimulationManager] No MarkerArrowManager in this scene " +
+                             "— no evacuate arrow. Add one, or untick Use Evacuate Arrow.");
+            yield break;
+        }
+
+        MarkerArrowManager.Instance.PointAt(exitTarget);
+        evacuateArrowShown = true;
+
+        Debug.Log($"[SimulationManager] Evacuate arrow on '{exitTarget.name}'.");
+    }
+
+    private void HideEvacuateArrow()
+    {
+        if (evacuateArrowRoutine != null)
+        {
+            StopCoroutine(evacuateArrowRoutine);
+            evacuateArrowRoutine = null;
+        }
+
+        // Only clear an arrow THIS script raised — see the header note.
+        if (!evacuateArrowShown) return;
+        evacuateArrowShown = false;
+
+        if (MarkerArrowManager.Instance != null)
+            MarkerArrowManager.Instance.Hide();
     }
 
     // -------------------------------------------------------
     // THE FIRE IS OUT
     //
-    // Handed to FireController.ExtinguishFire() as a callback. Runs when
-    // the flames have finished fading, NOT when Sweep was tapped.
+    // Handed to FireController.ExtinguishFire() as a callback on the OFFICE
+    // Sweep step. Runs when the flames have finished fading, NOT when Sweep
+    // was tapped.
+    //
+    // Kitchen does not use this. Its Cover step passes null instead, because
+    // every reference below belongs to the extinguisher.
     //
     // A named method rather than a lambda because EndSimulation calls it
     // directly as a safety net.
@@ -1053,16 +1424,26 @@ public class SimulationManager : MonoBehaviour
         // Harmless in Kitchen too, where every reference here is null.
         OnFireIsOut();
 
-        // KITCHEN — same reasoning, for the towel. The timer can expire
-        // mid-dip, leaving the towel frozen in the sink pose over the results
-        // screen with the coroutine handle still set into the next run.
-        if (towelDip != null) towelDip.ResetToRest();
-               if (towelCover != null) towelCover.ResetToRest();
+        // KITCHEN — same reasoning, for the towel and the valve. The timer can
+        // expire mid-dip, mid-throw or mid-turn, leaving the towel frozen in
+        // the sink pose, parented to the LPG tank, or the right arm still
+        // welded to a half-turned valve over the results screen — with
+        // coroutine handles still set into the next run.
+        //
+        // The full seven, not just the controllers: a run that ends on step 3
+        // leaves the Wet button greyed out and the towel wet, and neither
+        // would be put back by Start() alone if the scene is not reloaded.
+        ResetKitchenState();
 
         // Clear the lockout so a run that ended mid-choreography does not
         // leave the flag set for whatever comes next.
         EndStepLockout();
         pullSequenceOwnsHand = false;
+
+        // The run is over — win, loss or timeout. The exit arrow has nothing
+        // left to point at, and would otherwise hang over the results screen.
+        // Also cancels a delayed reveal still counting down.
+        HideEvacuateArrow();
 
         GameModeManager modeManager = FindFirstObjectByType<GameModeManager>();
         if (modeManager != null)

@@ -575,6 +575,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1af3d7c73bf92647908bce9110a0af3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhaseTransitionManager
+  useMarkerArrow: 1
   promptLines:
   - text: "Good work \u2014 you've handled every hazard in this office."
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
@@ -5743,8 +5744,16 @@ MonoBehaviour:
         m_CallState: 2
   maxStep: 8
   useKitchenHints: 0
+  useEvacuateArrow: 1
+  exitTarget: {fileID: 0}
+  evacuateArrowDelay: 1.5
   towelDip: {fileID: 0}
   towelCover: {fileID: 0}
+  towelGrab: {fileID: 0}
+  towelWetness: {fileID: 0}
+  towelInteractable: {fileID: 0}
+  wctlButtons: {fileID: 0}
+  valveTurn: {fileID: 0}
   resultsSubmitter: {fileID: 1363342065}
   pressAlarm: {fileID: 283207644}
   extinguisherAnimator: {fileID: 1258568878}
@@ -5765,6 +5774,7 @@ MonoBehaviour:
   rightHandGrip: {fileID: 473489021}
   sprayVFX: {fileID: 1840280758}
   fireController: {fileID: 1385695924}
+  twoFireDecision: {fileID: 0}
   relaxDuration: 0.8
   releaseLeftHandOnFireOut: 1
   relaxExtinguisherOnFireOut: 1
@@ -9203,78 +9213,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 460603386}
   m_CullTransparentMesh: 1
---- !u!1001 &461635709
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 181755037849038213, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_Name
-      value: PCScreen
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 2.247149
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 2.247149
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 2.247149
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 9.551
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 2.165
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -4.878
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: -0.6956798
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0.000000045175526
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0.71835214
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0.000000029081813
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 91.837
-      objectReference: {fileID: 0}
-    - target: {fileID: 706618271248512831, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 181755037849038213, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1441667273}
-  m_SourcePrefab: {fileID: 100100000, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
 --- !u!1001 &461833429
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10124,12 +10062,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63f30cd97bbe0714898afa8623c34e8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DoubleDoor
-  leftDoor: {fileID: 1156490362}
-  rightDoor: {fileID: 1921492082}
-  openAngle: 90
-  swingSpeed: 120
-  mirrorLeftDoor: 1
-  playerTag: Player
 --- !u!65 &541600662
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -15396,6 +15328,13 @@ MonoBehaviour:
   loseTitleText: {fileID: 1148705898}
   loseMessageText: {fileID: 193604207}
   loseAttemptText: {fileID: 0}
+  timeoutWithPenaltiesMessage: "Time ran out. Wrong actions cost you {0} seconds
+    \u2014 that is what emptied the clock, not your pace."
+  timeoutNoPenaltiesMessage: The fire got out of control before you finished. Review
+    what went wrong, then try again.
+  wrongDecisionKicker: WRONG DECISION
+  wrongDecisionMessage: You cleared the far fire first. The fire by the door spread
+    and blocked your only way out. Always clear the fire nearest your exit.
 --- !u!1 &815797098
 GameObject:
   m_ObjectHideFlags: 0
@@ -22248,6 +22187,23 @@ MonoBehaviour:
     doing anything else.
   disableAfterCorrectUse: 0
   extinguisherGrab: {fileID: 0}
+  showOutline: 1
+  outlineColor: {r: 0.2, g: 0.6, b: 1, a: 1}
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  focusTightness: 0.5
+  revealStrength: 0.35
+  maxRevealDistance: 8
+  requireLineOfSight: 1
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.5
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  flashOnWrong: 1
+  wrongFlashColor: {r: 1, g: 0.15, b: 0.1, a: 1}
+  wrongFlashDuration: 0.45
+  hapticOnWrong: 1
 --- !u!65 &1182053531
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -22675,6 +22631,23 @@ MonoBehaviour:
     doing anything else.
   disableAfterCorrectUse: 0
   extinguisherGrab: {fileID: 0}
+  showOutline: 1
+  outlineColor: {r: 0.2, g: 0.6, b: 1, a: 1}
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  focusTightness: 0.5
+  revealStrength: 0.35
+  maxRevealDistance: 8
+  requireLineOfSight: 1
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.5
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  flashOnWrong: 1
+  wrongFlashColor: {r: 1, g: 0.15, b: 0.1, a: 1}
+  wrongFlashDuration: 0.45
+  hapticOnWrong: 1
 --- !u!65 &1210251814
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -25187,13 +25160,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb89dbbb1fb353a4cb164622712e5677, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Door
-  openAngle: 90
-  speed: 2
-  hingeLeft: 1
-  autoCloseDelay: 3
-  actionName: ExitDoor
-  wrongExitPenalty: 20
-  wrongExitTip: You must finish putting out the fire before evacuating!
 --- !u!65 &1355808681
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -25570,6 +25536,7 @@ MonoBehaviour:
   showToStep: 7
   requireFirePosition: 1
   fireTarget: {fileID: 1385695922}
+  secondFireTarget: {fileID: 0}
   playerCamera: {fileID: 1432412427}
   tooCloseDistance: 1.5
   tooFarDistance: 4
@@ -26050,11 +26017,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ea1afbf56b2ac349a4418c78282ee44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FireController
-  squeezeShrinkTo: 0.5
-  squeezeDuration: 2
-  dieDuration: 3
-  deactivateAfterDeath: 1
-  hideDelay: 2
 --- !u!1 &1386631810 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 5c504976d29ce06469d9818dd170170b, type: 3}
@@ -27129,33 +27091,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
   m_PrefabInstance: {fileID: 2216348096976786965}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1441667272 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 181755037849038213, guid: a1e0bacb14a760841bc72f24ddc9607e, type: 3}
-  m_PrefabInstance: {fileID: 461635709}
-  m_PrefabAsset: {fileID: 0}
---- !u!64 &1441667273
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1441667272}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 5060444177187149915, guid: 7896d205d817a67488c18e6762cf0036, type: 3}
 --- !u!1001 &1441785483
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -39644,6 +39579,23 @@ MonoBehaviour:
 '
   disableAfterCorrectUse: 0
   extinguisherGrab: {fileID: 1840280761}
+  showOutline: 1
+  outlineColor: {r: 0.2, g: 0.6, b: 1, a: 1}
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  focusTightness: 0.5
+  revealStrength: 0.35
+  maxRevealDistance: 8
+  requireLineOfSight: 1
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.5
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  flashOnWrong: 1
+  wrongFlashColor: {r: 1, g: 0.15, b: 0.1, a: 1}
+  wrongFlashDuration: 0.45
+  hapticOnWrong: 1
 --- !u!65 &1840280760
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -40730,12 +40682,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
-  interactDistance: 5
+  highlightMode: 0
+  excludedRenderers: []
   hoverGlow: {r: 1, g: 1, b: 1, a: 1}
   glowIntensity: 3
-  pulseSpeed: 3
-  pulseAmount: 0.35
-  fadeSpeed: 10
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  revealStrength: 0.35
+  revealFadeSpeed: 10
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.55
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
 --- !u!1001 &1885322564
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -45493,12 +45454,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
-  interactDistance: 5
+  highlightMode: 0
+  excludedRenderers: []
   hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
   glowIntensity: 3
-  pulseSpeed: 1.6
-  pulseAmount: 0.2
-  fadeSpeed: 14
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  revealStrength: 0.35
+  revealFadeSpeed: 10
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.55
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
 --- !u!114 &2134680314
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -46024,4 +45994,3 @@ SceneRoots:
   - {fileID: 670982862}
   - {fileID: 1620711950}
   - {fileID: 1093691057}
-  - {fileID: 461635709}

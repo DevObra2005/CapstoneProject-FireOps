@@ -58,14 +58,28 @@ using UnityEngine.UI;
 //
 // FIRE POSITION VALIDATION:
 // Squeeze is blocked unless the player is standing at a sensible
-// distance from the fire AND facing it. This is a POSITIONING
-// mistake, not a knowledge mistake - the player knows Squeeze is
-// next, they are just standing wrong - so it costs no time. They
-// get a hint and try again.
+// distance from a fire AND facing it. This is a POSITIONING mistake,
+// not a knowledge mistake - the player knows Squeeze is next, they are
+// just standing wrong - so it costs no time. They get a hint and try
+// again.
 //
 // Real fire training teaches standing BACK from the fire, roughly
 // 6-8 feet, not walking up to it. So being too close is its own
 // warning, not just being too far.
+//
+// TWO FIRES (OFFICE ONLY):
+// The Office scene now burns TWO fires at once, and the player CHOOSES
+// which to attack - that choice is the whole point of the decision
+// scenario. So the check has to accept EITHER fire: it passes as soon
+// as the player is correctly positioned relative to one of them.
+//
+// A single fireTarget would have blocked the player at whichever fire
+// was not assigned, with the hint "Move closer to the fire" while they
+// were standing directly in front of one. The step would never
+// register and the run would stall with no error.
+//
+// Second Fire Target is OPTIONAL. Leave it EMPTY in Classroom and the
+// check behaves exactly as it always has, measuring the one fire.
 // -------------------------------------------------------
 
 public class TPASSButtonManager : MonoBehaviour
@@ -91,16 +105,28 @@ public class TPASSButtonManager : MonoBehaviour
     // -------------------------------------------------------
     [Header("Fire Position Check (Squeeze only)")]
     [Tooltip("Require the player to be standing at a sensible distance " +
-             "from the fire, and facing it, before Squeeze will register.\n\n" +
+             "from a fire, and facing it, before Squeeze will register.\n\n" +
              "Untick to disable the whole check - useful while testing " +
              "other steps.")]
     [SerializeField] private bool requireFirePosition = true;
 
-    [Tooltip("The fire object to measure against. Usually " +
-             "VFX_Fire_01_Big_Smoke under Phase2Objects.\n\n" +
+    [Tooltip("The fire object to measure against.\n\n" +
              "Leave empty and the check is skipped entirely, so a scene " +
              "with no fire assigned still plays through.")]
     [SerializeField] private Transform fireTarget;
+
+    [Tooltip("OFFICE ONLY — the SECOND fire. Leave EMPTY in Classroom.\n\n" +
+             "The Office decision scenario burns two fires and lets the " +
+             "player choose which to attack. With only one assigned, " +
+             "standing in front of the OTHER fire would be rejected as " +
+             "'move closer to the fire' — the step would never register " +
+             "and the run would stall with no error.\n\n" +
+             "When both are assigned the check passes as soon as the player " +
+             "is correctly positioned relative to EITHER one. Which fire " +
+             "they actually chose is TwoFireDecision's job, not this " +
+             "script's — this only asks whether they are standing somewhere " +
+             "spraying makes sense.")]
+    [SerializeField] private Transform secondFireTarget;
 
     [Tooltip("The player's camera. Used for BOTH distance and facing, " +
              "because in a first-person game the camera IS the player's " +
@@ -279,10 +305,26 @@ public class TPASSButtonManager : MonoBehaviour
     // -------------------------------------------------------
     // FIRE POSITION CHECK
     //
-    // Returns NULL when the player is standing correctly, or the hint
-    // to show when they are not. Null-as-success reads oddly at first,
-    // but it means the caller is a single if - and there is no way to
-    // forget to check a bool and then not know which hint to show.
+    // Returns NULL when the player is standing correctly at SOME fire, or
+    // the hint to show when they are not standing correctly at any of
+    // them. Null-as-success reads oddly at first, but it means the caller
+    // is a single if - and there is no way to forget to check a bool and
+    // then not know which hint to show.
+    //
+    // WITH TWO FIRES, ONE PASS IS ENOUGH. The player is choosing which
+    // fire to fight; being correctly positioned at either is correct
+    // positioning. Whether they picked the RIGHT fire is graded by
+    // TwoFireDecision on the same tap - a separate judgement, with its own
+    // penalty, made after this gate has already let them through.
+    //
+    // WHEN BOTH FAIL, the hint comes from the NEARER fire. That is the one
+    // the player is most likely trying to reach, so "step back" or "face
+    // the fire" describes the situation they are actually in rather than
+    // a fire across the room.
+    //
+    // A DEACTIVATED FIRE IS SKIPPED. FireController hides a fire once it
+    // has died, so an extinguished one stops being a valid target
+    // automatically - no bookkeeping needed here.
     // -------------------------------------------------------
     private string CheckFirePosition()
     {
@@ -291,15 +333,60 @@ public class TPASSButtonManager : MonoBehaviour
         // playable - failing open matters more than failing safe here,
         // because the cost of a false block is a stuck simulation.
         if (!requireFirePosition) return null;
-        if (fireTarget == null || playerCamera == null) return null;
+        if (playerCamera == null) return null;
 
+        string nearestHint = null;
+        float nearestDistance = float.MaxValue;
+        bool anyFireChecked = false;
+
+        // Both slots, in order. secondFireTarget is null in Classroom, so
+        // that scene evaluates exactly one fire and behaves as it always
+        // has.
+        Transform[] fires = { fireTarget, secondFireTarget };
+
+        foreach (Transform fire in fires)
+        {
+            if (fire == null) continue;
+
+            // Already extinguished and hidden — not a target any more.
+            if (!fire.gameObject.activeInHierarchy) continue;
+
+            anyFireChecked = true;
+
+            string hint = EvaluateFire(fire, out float distance);
+
+            // Correctly positioned at THIS fire. Nothing else to check.
+            if (hint == null) return null;
+
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestHint = hint;
+            }
+        }
+
+        // No fire assigned, or every fire already out. Fail open.
+        if (!anyFireChecked) return null;
+
+        return nearestHint;
+    }
+
+    // -------------------------------------------------------
+    // Is the player standing correctly relative to ONE fire?
+    //
+    // Returns null when yes, or the hint describing what is wrong.
+    // distance is passed back so the caller can pick the nearest fire's
+    // hint when every fire fails.
+    // -------------------------------------------------------
+    private string EvaluateFire(Transform fire, out float distance)
+    {
         // Distance is measured flat, ignoring height. The fire sits on
         // the floor and the camera at eye level, so a 3D distance would
         // read as "too far" even standing right in front of it.
-        Vector3 toFire = fireTarget.position - playerCamera.position;
+        Vector3 toFire = fire.position - playerCamera.position;
         toFire.y = 0f;
 
-        float distance = toFire.magnitude;
+        distance = toFire.magnitude;
 
         if (distance < tooCloseDistance) return tooCloseHint;
         if (distance > tooFarDistance) return tooFarHint;
@@ -313,7 +400,7 @@ public class TPASSButtonManager : MonoBehaviour
         float angle = Vector3.Angle(lookDirection, toFire);
         if (angle > facingAngle) return notFacingHint;
 
-        return null;   // standing correctly
+        return null;   // standing correctly at this fire
     }
 
     // -------------------------------------------------------

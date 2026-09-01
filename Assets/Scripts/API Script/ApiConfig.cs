@@ -1,4 +1,4 @@
-// -------------------------------------------------------
+ // -------------------------------------------------------
 // WHAT THIS DOES:
 // Holds your Laravel server's address in ONE place, so every
 // script (LoginManager, ResultsSubmitter, EventSelectionManager,

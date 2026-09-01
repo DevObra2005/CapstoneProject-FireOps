@@ -18,6 +18,22 @@ public class PhaseTransitionManager : MonoBehaviour
     // environment needs and write matching dialogue — the script just
     // highlights each target and plays its lines, in order.
     //
+    // MARKER ARROW — WHY IT LIVES HERE:
+    // AlarmTarget and ExtinguisherTarget are added at RUNTIME via
+    // AddComponent. That makes them a bad place to own the arrow: if
+    // either script fails to compile or its serialized bool comes back
+    // false, the arrow silently never appears and there is nothing in
+    // the Inspector to look at. This manager is a real scene object that
+    // already knows exactly which target is armed and when, so it owns
+    // the arrow for the whole bridge. One place to read, one place to fix.
+    //
+    // Per-object arrow tuning does NOT live here. If a target needs a
+    // taller gap, needs its children ignored, or needs the arrow at an
+    // exact spot, drop a MarkerArrowAnchor component on that object and
+    // set it there. The setting then sits on the thing it describes,
+    // instead of in a manager three files away. This script just says
+    // "point at this" and the arrow works out the rest.
+    //
     // HOW PHASE 2 IS LOADED — READ THIS BEFORE ADDING A SCENE FIELD:
     // Phase 2 is NOT a separate scene. Every environment scene contains
     // BOTH phases. Phase 1 shows hazardObjects; Phase 2 shows
@@ -45,6 +61,10 @@ public class PhaseTransitionManager : MonoBehaviour
     // AlarmTarget.cs and ExtinguisherTarget.cs call these — keep all three
     // files in sync if you rename again.
     // -------------------------------------------------------
+
+    [Header("Marker Arrow")]
+    [Tooltip("Float the green arrow above each teaching target while it is armed. Per-object tuning goes on a MarkerArrowAnchor component on the target itself.")]
+    public bool useMarkerArrow = true;
 
     [Header("Prompt — plays when all hazards are done")]
     public DialogueLine[] promptLines;
@@ -113,6 +133,31 @@ public class PhaseTransitionManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
+    // MARKER ARROW HELPERS
+    // -------------------------------------------------------
+
+    private void ShowArrowOn(GameObject target)
+    {
+        if (!useMarkerArrow) return;
+        if (target == null) return;
+
+        if (MarkerArrowManager.Instance == null)
+        {
+            Debug.LogWarning("[PhaseTransition] No MarkerArrowManager in this scene — no arrow shown.");
+            return;
+        }
+
+        MarkerArrowManager.Instance.PointAt(target.transform);
+        Debug.Log($"[PhaseTransition] Arrow on '{target.name}'");
+    }
+
+    private void HideArrow()
+    {
+        if (MarkerArrowManager.Instance == null) return;
+        MarkerArrowManager.Instance.Hide();
+    }
+
+    // -------------------------------------------------------
     // STAGE 1 — TEACHING TARGET 1 (alarm / wet blanket)
     // -------------------------------------------------------
 
@@ -132,6 +177,8 @@ public class PhaseTransitionManager : MonoBehaviour
             target = teachTarget1.AddComponent<AlarmTarget>();
 
         target.Setup(this);
+
+        ShowArrowOn(teachTarget1);
     }
 
     // Called by AlarmTarget.OnClicked()
@@ -139,6 +186,8 @@ public class PhaseTransitionManager : MonoBehaviour
     {
         if (!awaitingTarget1) return;
         awaitingTarget1 = false;
+
+        HideArrow();
 
         if (teach1Lines == null || teach1Lines.Length == 0)
         {
@@ -173,6 +222,8 @@ public class PhaseTransitionManager : MonoBehaviour
             target = teachTarget2.AddComponent<ExtinguisherTarget>();
 
         target.Setup(this);
+
+        ShowArrowOn(teachTarget2);
     }
 
     // Called by ExtinguisherTarget.OnClicked()
@@ -180,6 +231,8 @@ public class PhaseTransitionManager : MonoBehaviour
     {
         if (!awaitingTarget2) return;
         awaitingTarget2 = false;
+
+        HideArrow();
 
         if (teach2Lines == null || teach2Lines.Length == 0)
         {
@@ -199,6 +252,9 @@ public class PhaseTransitionManager : MonoBehaviour
 
     void ShowConfirmScreen()
     {
+        // Safety net — never leave an arrow floating into the confirm screen
+        HideArrow();
+
         if (confirmPanel != null)
         {
             confirmPanel.SetActive(true);
@@ -222,6 +278,8 @@ public class PhaseTransitionManager : MonoBehaviour
         GameModeManager.intentionalTransition = true;
 
         Debug.Log("[PhaseTransition] Loading Phase 2...");
+
+        HideArrow();
 
         // Hide the confirm screen so it isn't visible behind the loader
         if (confirmPanel != null)
