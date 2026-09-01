@@ -532,6 +532,8 @@ MonoBehaviour:
   actionName: ExitDoor
   wrongExitPenalty: 20
   wrongExitTip: You must finish putting out the fire before evacuating!
+  exitBlockingFire: {fileID: 0}
+  fireBlockingTip: Fire is blocking the exit.
 --- !u!65 &19721224
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -930,6 +932,13 @@ MonoBehaviour:
   loseTitleText: {fileID: 2112588702}
   loseMessageText: {fileID: 1764544783}
   loseAttemptText: {fileID: 0}
+  timeoutWithPenaltiesMessage: "Time ran out. Wrong actions cost you {0} seconds
+    \u2014 that is what emptied the clock, not your pace."
+  timeoutNoPenaltiesMessage: The fire got out of control before you finished. Review
+    what went wrong, then try again.
+  wrongDecisionKicker: WRONG DECISION
+  wrongDecisionMessage: You cleared the far fire first. The fire by the door spread
+    and blocked your only way out. Always clear the fire nearest your exit.
 --- !u!224 &54033773
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3198,14 +3207,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 116901134}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ea1afbf56b2ac349a4418c78282ee44, type: 3}
+  m_Script: {fileID: 11500000, guid: 36568c1bf8b3e6a47bbc665d4454123d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FireController
   squeezeShrinkTo: 0.5
   squeezeDuration: 1
-  dieDuration: 2
+  dieDuration: 0.5
   deactivateAfterDeath: 1
-  hideDelay: 2
+  hideDelay: 1
 --- !u!1001 &429002503
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6235,6 +6244,7 @@ MonoBehaviour:
   rightHandGrip: {fileID: 0}
   sprayVFX: {fileID: 0}
   fireController: {fileID: 414293189}
+  twoFireDecision: {fileID: 0}
   relaxDuration: 0.8
   releaseLeftHandOnFireOut: 1
   relaxExtinguisherOnFireOut: 1
@@ -6818,12 +6828,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
-  interactDistance: 5
-  hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
-  glowIntensity: 0.55
-  pulseSpeed: 1.6
-  pulseAmount: 0.2
-  fadeSpeed: 14
+  highlightMode: 0
+  excludedRenderers: []
+  hoverGlow: {r: 1, g: 0.1747074, b: 0, a: 1}
+  glowIntensity: 3
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  revealStrength: 1
+  revealFadeSpeed: 10
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.55
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
 --- !u!1001 &906114538
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6834,23 +6853,23 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.3
+      value: 0.38
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.3
+      value: 0.38
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.3
+      value: 0.38
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 6.407
+      value: 6.281
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.426
+      value: -1.366
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6c239cfbc0608bd468443739ba962b63, type: 3}
       propertyPath: m_LocalPosition.z
@@ -12533,12 +12552,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61d7fe7f16ea3c44aba0202dae2d7f18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ClickableHazard
-  interactDistance: 5
-  hoverGlow: {r: 1, g: 0.957, b: 0.878, a: 1}
-  glowIntensity: 0.55
-  pulseSpeed: 1.6
-  pulseAmount: 0.2
-  fadeSpeed: 14
+  highlightMode: 0
+  excludedRenderers: []
+  hoverGlow: {r: 0.990566, g: 0.12500696, b: 0.023362402, a: 1}
+  glowIntensity: 0.34
+  outlineWidth: 0.02
+  enableLookReveal: 1
+  revealStrength: 1
+  revealFadeSpeed: 10
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.55
+  breatheAmount: 0.15
+  breatheSpeed: 1.8
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
 --- !u!114 &1073905865
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12588,7 +12616,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d78d28661d34d63459ab66b4b3747294, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OilCleanupEffect
-  oilObject: {fileID: 0}
+  oilObject: {fileID: 1073905862}
 --- !u!1 &1156255156
 GameObject:
   m_ObjectHideFlags: 0
@@ -17572,6 +17600,16 @@ MonoBehaviour:
   showOutline: 1
   outlineColor: {r: 0.2, g: 0.6, b: 1, a: 1}
   outlineWidth: 0.02
+  enableLookReveal: 1
+  revealStrength: 0.35
+  revealFadeSpeed: 10
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
+  snappiness: 0.7
+  popAmount: 1.25
+  popFlash: 0.5
+  breatheAmount: 0.12
+  breatheSpeed: 2.2
 --- !u!114 &1766011345
 MonoBehaviour:
   m_ObjectHideFlags: 0

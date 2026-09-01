@@ -31,6 +31,29 @@ using TMPro;
 // lives in the Performance Results screen.
 //
 // -------------------------------------------------------
+// WHY THE TIMEOUT MESSAGE NAMES THE PENALTIES
+//
+// "The fire got out of control before you finished" is true but useless.
+// It reads as "you were too slow", and slowness is almost never what
+// actually happened.
+//
+// The clock loses time two ways: walking, and PENALTIES. A run that
+// spends 50 seconds on wrong actions has 40 left for everything else,
+// so it hits zero with the player moving at a perfectly reasonable pace.
+// They then read a message telling them to hurry up, and hurry up on the
+// next attempt — which is the wrong lesson, and usually makes the next
+// run worse.
+//
+// So the message reports the penalty total when there is one. A player
+// who reads "mistakes cost you 50 seconds" knows what to fix. One who
+// genuinely ran the clock down with no penalties still gets the plain
+// version, because for them the original wording was right.
+//
+// The number comes from SimulationManager.TotalPenaltySeconds — the same
+// value already shown on the win panel and already sent to Laravel, so
+// there is no second source to drift.
+//
+// -------------------------------------------------------
 // THE WRONG-DECISION LOSS (OFFICE ONLY)
 //
 // The Office decision scenario ends the run when the player clears the
@@ -98,6 +121,28 @@ public class ResultsUIManager : MonoBehaviour
              "passed and the run was not recorded.")]
     public TextMeshProUGUI loseAttemptText;
 
+    [Header("Timeout Wording")]
+    [TextArea]
+    [Tooltip("Shown when the clock hit zero and PENALTIES were the reason — " +
+             "{0} is replaced with the penalty total in seconds.\n\n" +
+             "This is the common case and the one worth getting right. A " +
+             "player who lost 50 seconds to wrong actions was not slow; " +
+             "telling them the fire got ahead of them makes them rush the " +
+             "next attempt, which usually goes worse.")]
+    [SerializeField]
+    private string timeoutWithPenaltiesMessage =
+        "Time ran out. Wrong actions cost you {0} seconds — that is what " +
+        "emptied the clock, not your pace.";
+
+    [TextArea]
+    [Tooltip("Shown when the clock hit zero with NO penalties recorded. Here " +
+             "the player really did run the time down, so the original " +
+             "wording is the honest one.")]
+    [SerializeField]
+    private string timeoutNoPenaltiesMessage =
+        "The fire got out of control before you finished. Review what went " +
+        "wrong, then try again.";
+
     [Header("Wrong Decision Loss (Office only)")]
     [Tooltip("Kicker shown when the run ended because the player cleared the " +
              "WRONG FIRE first. Overrides the timeout and low-score labels, " +
@@ -139,6 +184,26 @@ public class ResultsUIManager : MonoBehaviour
     private bool LostByWrongDecision()
     {
         return twoFireDecision != null && twoFireDecision.WrongFireChosen;
+    }
+
+    // -------------------------------------------------------
+    // The timeout message, with the penalty total filled in when there is
+    // one.
+    //
+    // Reads TotalPenaltySeconds live rather than taking it from the server
+    // response, so the local fallback panel can say the same thing before
+    // Laravel has replied — and so the two can never disagree.
+    // -------------------------------------------------------
+    private string BuildTimeoutMessage()
+    {
+        int penalties = SimulationManager.Instance != null
+            ? SimulationManager.Instance.TotalPenaltySeconds
+            : 0;
+
+        if (penalties <= 0)
+            return timeoutNoPenaltiesMessage;
+
+        return string.Format(timeoutWithPenaltiesMessage, penalties);
     }
 
     // -------------------------------------------------------
@@ -246,8 +311,7 @@ public class ResultsUIManager : MonoBehaviour
         else if (response.fail_reason == "timeout")
         {
             kicker = "TIME EXPIRED";
-            message = "The fire got out of control before you finished. " +
-                      "Review what went wrong, then try again.";
+            message = BuildTimeoutMessage();
         }
         else
         {
@@ -303,8 +367,7 @@ public class ResultsUIManager : MonoBehaviour
         ShowLosePanel(
             kicker: "TIME EXPIRED",
             title: "Fire Spread!",
-            message: "The fire got out of control before you finished. " +
-                     "Review what went wrong, then try again.");
+            message: BuildTimeoutMessage());
     }
 
     // -------------------------------------------------------
