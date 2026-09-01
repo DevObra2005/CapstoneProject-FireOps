@@ -13,13 +13,13 @@
 public static class ApiConfig
 {
     // CHANGE THIS LINE when your network changes:
-    private const string SERVER_IP = "192.168.1.5"; // <-- your PC's IP
+    private const string SERVER_IP = "192.168.0.109:8000/api"; // <-- your PC's IP
     private const string PORT = "8000";
 
     public static string BaseUrl => $"http://{SERVER_IP}:{PORT}";
     private static string ApiBase => $"{BaseUrl}/api";
 
-    // One dedicated property per endpoint — no more manually
+    // One dedicated property per endpoint ï¿½ no more manually
     // concatenating "/participant/whatever" in each script, which
     // is exactly what caused the missing "/api" bug just now.
     public static string LoginUrl => $"{ApiBase}/participant/login";
