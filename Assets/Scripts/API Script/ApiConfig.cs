@@ -1,4 +1,4 @@
- // -------------------------------------------------------
+// -------------------------------------------------------
 // WHAT THIS DOES:
 // Holds your Laravel server's address in ONE place, so every
 // script (LoginManager, ResultsSubmitter, EventSelectionManager,
@@ -12,16 +12,10 @@
 
 public static class ApiConfig
 {
-    // CHANGE THIS LINE when your network changes:
-    private const string SERVER_IP = "https://bfpfireops.com/api"; // <-- your PC's IP
-    private const string PORT = "8000";
-
-    public static string BaseUrl => $"http://{SERVER_IP}:{PORT}";
+    private const string BASE_DOMAIN = "https://bfpfireops.com";
+    public static string BaseUrl => BASE_DOMAIN;
     private static string ApiBase => $"{BaseUrl}/api";
 
-    // One dedicated property per endpoint � no more manually
-    // concatenating "/participant/whatever" in each script, which
-    // is exactly what caused the missing "/api" bug just now.
     public static string LoginUrl => $"{ApiBase}/participant/login";
     public static string ResultsUrl => $"{ApiBase}/participant/results";
     public static string EventsUrl => $"{ApiBase}/participant/events";
