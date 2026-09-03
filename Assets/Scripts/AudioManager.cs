@@ -5,8 +5,25 @@ public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
 
-    [Header("UI Click (existing setup)")]
+    // -------------------------------------------------------
+    // UI CLICK
+    //
+    // clickSound must be assigned in EVERY scene that has an AudioManager.
+    // Only ONE AudioManager survives — the first one loaded — and the guard
+    // in Awake destroys the rest. If the survivor has an empty clip, no
+    // button in the entire game makes a sound, with no error to follow.
+    //
+    // audioSource is the ORIGINAL setup and is optional now. When empty, the
+    // click falls through to the internal SFX source, which is created in
+    // code and therefore always exists.
+    // -------------------------------------------------------
+    [Header("UI Click")]
+    [Tooltip("OPTIONAL. Leave empty to use the internal SFX source instead.")]
     public AudioSource audioSource;
+
+    [Tooltip("Assign in EVERY scene. The surviving AudioManager's clip is the " +
+             "one that plays, and there is no way to know in advance which " +
+             "scene loads first.")]
     public AudioClip clickSound;
 
     [Header("Volume (0 - 1)")]
@@ -28,9 +45,17 @@ public class AudioManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            // A LATER scene's AudioManager is being destroyed here. If its
+            // clickSound was assigned and the survivor's was not, inherit it —
+            // otherwise the whole game goes silent because of load order,
+            // which is not something the Inspector shows you.
+            if (Instance.clickSound == null && clickSound != null)
+                Instance.clickSound = clickSound;
+
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
@@ -48,18 +73,34 @@ public class AudioManager : MonoBehaviour
         return s;
     }
 
-    // ---- Existing method. Buttons still reference this. ----
+    // ---- UI CLICK ----
+
     public void PlayClick()
     {
         if (clickSound == null) return;
 
+        // PlayOneShot, never Play(). The assigned audioSource may have Loop
+        // ticked from an earlier setup, and Play() would honour that — one
+        // click and the sound repeats forever. PlayOneShot ignores loop.
         if (audioSource != null)
-            audioSource.PlayOneShot(clickSound);
+            audioSource.PlayOneShot(clickSound, sfxVolume);
         else
             sfxSource.PlayOneShot(clickSound, sfxVolume);
     }
 
-    // ---- New: music and ambient ----
+    /// <summary>
+    /// Static entry point. Any script can call AudioManager.Click() and it
+    /// reaches whichever instance survived DontDestroyOnLoad.
+    ///
+    /// Unity's OnClick list cannot call static methods, which is what
+    /// ButtonClickSound exists for — see that file.
+    /// </summary>
+    public static void Click()
+    {
+        Instance?.PlayClick();
+    }
+
+    // ---- MUSIC AND AMBIENT ----
 
     public void PlayMusic(AudioClip clip)
     {
@@ -79,27 +120,27 @@ public class AudioManager : MonoBehaviour
         ambientFade = StartCoroutine(FadeTo(ambientSource, clip, ambientVolume));
     }
 
-    /// <summary>Fades the music out and stops it.</summary>
     public void StopMusic()
     {
         if (musicFade != null) StopCoroutine(musicFade);
         musicFade = StartCoroutine(FadeOutAndStop(musicSource));
     }
 
-    /// <summary>Fades the ambient loop out and stops it.</summary>
     public void StopAmbient()
     {
         if (ambientFade != null) StopCoroutine(ambientFade);
         ambientFade = StartCoroutine(FadeOutAndStop(ambientSource));
     }
 
-    // ---- New: one-line SFX from any script ----
+    // ---- SFX ----
 
     public static void Play(AudioClip clip, float volumeScale = 1f)
     {
         if (Instance == null || clip == null) return;
         Instance.sfxSource.PlayOneShot(clip, Instance.sfxVolume * volumeScale);
     }
+
+    // ---- FADES ----
 
     private IEnumerator FadeTo(AudioSource src, AudioClip clip, float targetVol)
     {
@@ -125,6 +166,7 @@ public class AudioManager : MonoBehaviour
         }
         src.volume = targetVol;
     }
+
     private IEnumerator FadeOutAndStop(AudioSource src)
     {
         if (!src.isPlaying) yield break;
