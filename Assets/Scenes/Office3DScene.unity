@@ -494,6 +494,7 @@ MonoBehaviour:
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
   confirmPanel: {fileID: 680703511}
+  confirmSound: {fileID: 8300000, guid: 07f60ad27ae4e774092bc8c7a2e5b9b3, type: 3}
   loadingTagline: PREPARING SIMULATION
 --- !u!224 &18615501
 RectTransform:
@@ -2261,7 +2262,7 @@ MonoBehaviour:
   wrongFirePenalty: 30
   dangerZonePenalty: 25
   farFireActionName: Attacked the far fire instead of the one blocking the exit
-  wrongFireTip: Wrong fire. The one by the door was blocking your exit.
+  wrongFireTip: Wrong fire. The door one blocked your exit..
   dangerZoneTip: Never let fire get between you and the exit. Clear the doorway first.
   blockedExitTip: The door is blocked. You're trapped.
   secondFireTip: "Exit is clear. Leave the rest \u2014 evacuate."
@@ -5074,6 +5075,8 @@ MonoBehaviour:
   towelInteractable: {fileID: 0}
   wctlButtons: {fileID: 0}
   valveTurn: {fileID: 0}
+  winSound: {fileID: 8300000, guid: a2097b84923f1644c94c242e69f3c0b8, type: 3}
+  loseSound: {fileID: 8300000, guid: b019a8c24134a224a956635839c47388, type: 3}
   resultsSubmitter: {fileID: 1363342065}
   pressAlarm: {fileID: 283207644}
   extinguisherAnimator: {fileID: 1341786405}
@@ -7791,6 +7794,56 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2288090273180196266, guid: 01bb3aaf4c1c9e343beecd6a7df72726, type: 3}
   m_PrefabInstance: {fileID: 1341786399}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &408261390
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 408261392}
+  - component: {fileID: 408261391}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &408261391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 408261390}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50e3b21a8d4c64d4e82ac9a900a7b70e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  audioSource: {fileID: 0}
+  clickSound: {fileID: 0}
+  musicVolume: 0.35
+  ambientVolume: 0.45
+  sfxVolume: 1
+  fadeDuration: 1
+--- !u!4 &408261392
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 408261390}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.18358, y: 1, z: -3.45013}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &416836753
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17004,7 +17057,7 @@ MonoBehaviour:
   correctColor: {r: 0.18, g: 0.8, b: 0.44, a: 1}
   wrongColor: {r: 0.91, g: 0.3, b: 0.24, a: 1}
   hintColor: {r: 0.95, g: 0.68, b: 0.18, a: 1}
-  hintTitle: REPOSITION
+  hintTitle: MOVE
 --- !u!1001 &738939479
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -20813,9 +20866,7 @@ GameObject:
   m_Component:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
-  - component: {fileID: 963194226}
   - component: {fileID: 963194229}
-  - component: {fileID: 963194230}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -20823,14 +20874,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &963194226
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
 --- !u!20 &963194227
 Camera:
   m_ObjectHideFlags: 0
@@ -20941,18 +20984,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &963194230
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dcb8ffbfa2afb2d43a0e1862ebbe435f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KeyTestScript
 --- !u!1 &976604532
 GameObject:
   m_ObjectHideFlags: 0
@@ -30483,6 +30514,9 @@ MonoBehaviour:
   dialogueTextRect: {fileID: 131868411}
   textRightNormal: 30
   textRightWithVideo: 230
+  popupSound: {fileID: 8300000, guid: f1bf84b9782f5cb40838467e46cc5815, type: 3}
+  tapSound: {fileID: 8300000, guid: 5bb3ea4559ba4e343af5b0c58d218246, type: 3}
+  closeSound: {fileID: 8300000, guid: 1a8bf7156669f8d42a45c24c3370d293, type: 3}
   slidePanel: {fileID: 1693831600}
   slideDistance: 400
   slideDuration: 0.4
@@ -31609,6 +31643,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExtinguisherSprayVFX
   sprayParticles: {fileID: 988764395}
+  sprayClip: {fileID: 8300000, guid: 6b777d77834b8014da019c60cb6ce4c2, type: 3}
+  volume: 0.7
+  fadeOutDuration: 0.4
 --- !u!1001 &1346283619
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -33329,6 +33366,56 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.44042233, y: 0.7000002, z: 0.028657652}
   m_Center: {x: -0.000000022351742, y: -0.00000025331974, z: 0.00000023841858}
+--- !u!1 &1460130187
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1460130189}
+  - component: {fileID: 1460130188}
+  m_Layer: 0
+  m_Name: SceneAudioProfile
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1460130188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1460130187}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2a9ea58da7ecb64b919d9da7266c8ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneAudioProfile
+  phase1Music: {fileID: 8300000, guid: 886a501cec498144e836743443831ed0, type: 3}
+  phase1Ambient: {fileID: 8300000, guid: 79e544ba708dd3245a4a0bae89ad1f8d, type: 3}
+  phase1PlayOnStart: 1
+  phase2Music: {fileID: 8300000, guid: 69ceeaaa891110749890c511675feed0, type: 3}
+  phase2Ambient: {fileID: 0}
+  phase2PlayOnStart: 0
+--- !u!4 &1460130189
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1460130187}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.18358, y: 1, z: -3.45013}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1460619016
 GameObject:
   m_ObjectHideFlags: 0
@@ -33818,6 +33905,11 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: -4.56}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1488799563 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8099014300572872465, guid: 813094771524329438eb157cf1143aae, type: 3}
+  m_PrefabInstance: {fileID: 2216348096976786965}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1488917848
 GameObject:
   m_ObjectHideFlags: 0
@@ -41365,15 +41457,15 @@ MonoBehaviour:
   glowIntensity: 3
   outlineWidth: 0.02
   enableLookReveal: 1
-  focusTightness: 0
   revealStrength: 0.35
-  maxRevealDistance: 8
-  requireLineOfSight: 0
+  revealFadeSpeed: 10
   snappiness: 0.7
   popAmount: 1.25
   popFlash: 0.55
   breatheAmount: 0.15
   breatheSpeed: 1.8
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
 --- !u!1 &1887479863 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1426325298921093922, guid: 907d7a608e001f14a89dc6c08a7f0a72, type: 3}
@@ -42370,15 +42462,15 @@ MonoBehaviour:
   glowIntensity: 3
   outlineWidth: 0.02
   enableLookReveal: 1
-  focusTightness: 0
   revealStrength: 0.35
-  maxRevealDistance: 8
-  requireLineOfSight: 0
+  revealFadeSpeed: 10
   snappiness: 0.7
   popAmount: 1.25
   popFlash: 0.55
   breatheAmount: 0.15
   breatheSpeed: 1.8
+  lookRayDistance: 8
+  lookAssistRadius: 0.25
 --- !u!114 &1937158396
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -46190,13 +46282,36 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1054436578}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8099014300572872465, guid: 813094771524329438eb157cf1143aae, type: 3}
+      insertIndex: 2
+      addedObject: {fileID: 2216348096976786970}
   m_SourcePrefab: {fileID: 100100000, guid: 813094771524329438eb157cf1143aae, type: 3}
 --- !u!4 &2216348096976786966 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
   m_PrefabInstance: {fileID: 2216348096976786965}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2216348096976786970
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1488799563}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b1f91c01137e974f9fb1f7c452f98f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FootstepController
+  footstepClips:
+  - {fileID: 8300000, guid: e682bc79049b1e8498312f529588f09c, type: 3}
+  - {fileID: 8300000, guid: 6b7246af1617fd647a8f727261d1b19d, type: 3}
+  - {fileID: 8300000, guid: 392cf493f762e7040a0f33e5e1f0bde7, type: 3}
+  stepInterval: 0.5
+  minSpeed: 0.5
+  volume: 0.5
+  pitchVariation: 0.1
 --- !u!1001 &2502545421473663215
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -48862,3 +48977,5 @@ SceneRoots:
   - {fileID: 1513303292}
   - {fileID: 976604534}
   - {fileID: 149182557}
+  - {fileID: 408261392}
+  - {fileID: 1460130189}

@@ -125,17 +125,6 @@ public class HandAnimationController : MonoBehaviour
         if (sweepAnchor != null) sweepAnchorRestRot = sweepAnchor.localEulerAngles;
     }
 
-#if UNITY_EDITOR
-    private void Update()
-    {
-        // Editor-only test keys (Game tab, not Simulator tab).
-        if (Input.GetKeyDown(KeyCode.Alpha1)) { Debug.Log("Key 1 - Twist"); PlayTwist(); }
-        if (Input.GetKeyDown(KeyCode.Alpha2)) { Debug.Log("Key 2 - Pull"); PlayPull(); }
-        if (Input.GetKeyDown(KeyCode.Alpha3)) { Debug.Log("Key 3 - Aim"); PlayAim(); }
-        if (Input.GetKeyDown(KeyCode.Alpha4)) { Debug.Log("Key 4 - Squeeze"); PlaySqueeze(); }
-        if (Input.GetKeyDown(KeyCode.Alpha5)) { Debug.Log("Key 5 - Sweep"); PlaySweep(); }
-    }
-#endif
 
     // -------------------------------------------------------
     // PUBLIC TRIGGERS - one per TPASS sub-step.

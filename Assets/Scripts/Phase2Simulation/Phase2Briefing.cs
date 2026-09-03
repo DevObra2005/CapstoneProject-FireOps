@@ -89,14 +89,23 @@ public class Phase2Briefing : MonoBehaviour
     }
 
     // Called by DialogueManager once the panel has slid away.
+    // Called by DialogueManager once the panel has slid away.
     private void StartTimer()
     {
+        // Music starts here rather than on scene load, so the officer's
+        // briefing is heard against silence. Fired before the timer so
+        // the fade-in has already begun when the countdown starts.
+        //
+        // Null-conditional: if a scene has no SceneAudioProfile (Kitchen,
+        // Classroom before they are set up), this is a silent no-op
+        // rather than a crash.
+        SceneAudioProfile.Instance?.BeginPhaseAudio();
+
         if (SimulationManager.Instance == null)
         {
             Debug.LogError("[Phase2Briefing] No SimulationManager in scene — timer cannot start!");
             return;
         }
-
         SimulationManager.Instance.BeginSimulation();
     }
 }

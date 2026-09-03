@@ -218,6 +218,16 @@ public class SimulationManager : MonoBehaviour
              "Leave EMPTY in Office and Classroom.")]
     [SerializeField] private KitchenValveController valveTurn;
 
+    [Header("Results Audio")]
+    [Tooltip("Plays when the run ends in a PASS. A short fanfare or chime.")]
+    [SerializeField] private AudioClip winSound;
+
+    [Tooltip("Plays when the run ends in a LOSS — timeout, or the Office " +
+             "wrong-fire ending. Something flat and final, not harsh: the " +
+             "player is about to read what they missed, and a punishing " +
+             "sting reads as mockery in a training tool.")]
+    [SerializeField] private AudioClip loseSound;
+
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
 
@@ -1428,6 +1438,9 @@ public class SimulationManager : MonoBehaviour
     {
         if (!simActive) return;
         simActive = false;
+
+        AudioManager.Instance?.StopMusic();
+        AudioManager.Instance?.StopAmbient();
         // SAFETY NET: a run can end at ANY moment — the timer can expire
         // mid-discharge, or a penalty can drive the clock to zero between
         // Squeeze and the fire going out. The FireController callback may
@@ -1460,6 +1473,8 @@ public class SimulationManager : MonoBehaviour
         // Also cancels a delayed reveal still counting down.
         HideEvacuateArrow();
 
+
+
         GameModeManager modeManager = FindFirstObjectByType<GameModeManager>();
         if (modeManager != null)
             modeManager.ResetToPhase1();
@@ -1484,6 +1499,13 @@ public class SimulationManager : MonoBehaviour
         {
             Debug.Log($"[SimulationManager] Completed. Submitting for validation. Local score: {finalScore}");
 
+            // Fires here, NOT after the server responds. `won` means the player
+            // beat the clock, which is the thing they just did and the thing
+            // they are owed feedback on. Laravel may still fail them on
+            // penalties — that verdict arrives seconds later in the panel, and
+            // pairing a sound with it would make the audio lag the moment.
+            AudioManager.Play(winSound);
+
             ResultsUIManager resultsUI = FindFirstObjectByType<ResultsUIManager>();
             if (resultsUI != null)
                 resultsUI.ShowSubmitting();
@@ -1493,6 +1515,9 @@ public class SimulationManager : MonoBehaviour
         else
         {
             Debug.Log("[SimulationManager] LOSE — timer expired. Recording the attempt.");
+
+            AudioManager.Play(loseSound);
+
             onLose.Invoke();
         }
 
