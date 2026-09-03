@@ -92,6 +92,9 @@ public class PhaseTransitionManager : MonoBehaviour
     [Header("Confirm Screen")]
     public GameObject confirmPanel;
 
+    [Tooltip("Plays when the confirm button is tapped. Leave empty to skip.")]
+    public AudioClip confirmSound;
+
     [Header("Loading Screen")]
     [Tooltip("Text shown on the loading screen during the transition")]
     public string loadingTagline = "PREPARING SIMULATION";
@@ -269,6 +272,25 @@ public class PhaseTransitionManager : MonoBehaviour
     // Hook this to the confirm button's OnClick in the Inspector
     public void LoadPhaseTwo()
     {
+
+        // Fired before the loading screen takes over, so the sound is heard
+        // rather than cut off by the scene reload.
+        AudioManager.Play(confirmSound);
+
+        // Phase 1's music has to be told to stop. AudioManager is
+        // DontDestroyOnLoad, so it survives the reload and would otherwise
+        // keep playing the calm track under the loading screen and straight
+        // into the Phase 2 briefing.
+        //
+        // StopMusic fades over AudioManager.fadeDuration rather than cutting,
+        // so the calm track recedes while the loading screen appears. Phase 2
+        // then starts from silence, and its own music comes in when the
+        // briefing is dismissed.
+        //
+        // The confirm SFX above is unaffected — it plays on a separate source.
+        AudioManager.Instance?.StopMusic();
+        AudioManager.Instance?.StopAmbient();
+
         PlayerPrefs.SetInt("FireLearningCompleted", 1);
         PlayerPrefs.SetInt("SimulationMode", 1);
         PlayerPrefs.Save();

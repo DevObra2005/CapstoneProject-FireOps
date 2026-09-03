@@ -17,6 +17,30 @@ public class LoginManager : MonoBehaviour
     public GameObject errorModal;        // drag ErrorModal here
     public TextMeshProUGUI modalMessage; // drag ModalMessage here
 
+    // -------------------------------------------------------
+    // THE OK BUTTON IS WIRED IN CODE, NOT THROUGH THE INSPECTOR.
+    //
+    // Either approach works. This one is used because a serialized OnClick
+    // entry stores a reference to one specific object, and that reference
+    // can be lost — by a rename, a merge, or an object being recreated —
+    // while the Inspector still displays the method name as if nothing is
+    // wrong. A listener added here resolves its target at runtime from the
+    // field below, and the warning fires out loud if the field is empty.
+    //
+    // WORTH KNOWING, because it cost hours to find: this button once had a
+    // SECOND Button component on its TEXT CHILD. The child rendered in
+    // front, so it swallowed every tap before the real button saw it — and
+    // because that impostor had Color Tint transitions of its own, the
+    // button still highlighted on hover. Everything looked correct and
+    // nothing worked. If a button ever stops responding while still
+    // reacting visually, check its children for a stray Button.
+    // -------------------------------------------------------
+    [Header("Modal OK Button")]
+    [Tooltip("Drag OkButton here. Do NOT also add an OnClick entry on the " +
+             "button itself — the listener below already calls the method, " +
+             "and both would fire it twice.")]
+    public Button modalOkButton;
+
     private const string NEXT_SCENE = "EventSelectionScene";
 
     void Start()
@@ -24,6 +48,21 @@ public class LoginManager : MonoBehaviour
         // Hide the modal when the scene first loads
         // Same idea as display:none in CSS — hidden until needed
         HideModal();
+
+        if (modalOkButton != null)
+        {
+            // RemoveListener first. Start can run again if the scene is
+            // reloaded without the object being destroyed, and a second
+            // AddListener would stack a duplicate call.
+            modalOkButton.onClick.RemoveListener(OnModalOKClick);
+            modalOkButton.onClick.AddListener(OnModalOKClick);
+        }
+        else
+        {
+            Debug.LogWarning("[LoginManager] Modal OK Button is not assigned — " +
+                             "the error modal will have no way to close. Drag " +
+                             "OkButton into the slot on this component.");
+        }
     }
 
     // ── Called by LoginButton's OnClick event ────────────────────────
@@ -51,8 +90,9 @@ public class LoginManager : MonoBehaviour
         StartCoroutine(LoginCoroutine(email, password));
     }
 
-    // ── Called by ModalOKButton's OnClick event ──────────────────────
-    // When the user taps OK on the error modal, this hides it
+    // ── Closes the error modal ───────────────────────────────────────
+    // Called by the listener attached in Start, not by an Inspector entry.
+    // Kept public so it can still be wired manually if ever needed.
     public void OnModalOKClick()
     {
         HideModal();

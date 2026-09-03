@@ -218,6 +218,16 @@ public class SimulationManager : MonoBehaviour
              "Leave EMPTY in Office and Classroom.")]
     [SerializeField] private KitchenValveController valveTurn;
 
+    [Header("Results Audio")]
+    [Tooltip("Plays when the run ends in a PASS. A short fanfare or chime.")]
+    [SerializeField] private AudioClip winSound;
+
+    [Tooltip("Plays when the run ends in a LOSS — timeout, or the Office " +
+             "wrong-fire ending. Something flat and final, not harsh: the " +
+             "player is about to read what they missed, and a punishing " +
+             "sting reads as mockery in a training tool.")]
+    [SerializeField] private AudioClip loseSound;
+
     [Header("Results Submission")]
     [SerializeField] private ResultsSubmitter resultsSubmitter;
 
@@ -1408,11 +1418,29 @@ public class SimulationManager : MonoBehaviour
     // -------------------------------------------------------
     // END SIMULATION
     // -------------------------------------------------------
-    public void EndSimulation(bool won)
+    // failReason — OPTIONAL, and only for losses Unity can identify that
+    // the server cannot.
+    //
+    // Laravel infers the reason from what it can see: not passed, no time
+    // left, so "timeout". That was right while a timeout was the only loss
+    // Unity could detect.
+    //
+    // It stopped being right when the Office decision scenario started
+    // ending runs early. A player who clears the wrong fire loses with
+    // fifty seconds still on the clock — the lose panel says WRONG
+    // DECISION and the admin panel said "Ran out of time" for the same
+    // attempt.
+    //
+    // Leave it out and nothing changes: Kitchen, Classroom, the timer path
+    // and Door all still call this with one argument, Laravel receives an
+    // empty string, and falls back to exactly the inference it does today.
+    public void EndSimulation(bool won, string failReason = null)
     {
         if (!simActive) return;
         simActive = false;
 
+        AudioManager.Instance?.StopMusic();
+        AudioManager.Instance?.StopAmbient();
         // SAFETY NET: a run can end at ANY moment — the timer can expire
         // mid-discharge, or a penalty can drive the clock to zero between
         // Squeeze and the fire going out. The FireController callback may
@@ -1445,6 +1473,8 @@ public class SimulationManager : MonoBehaviour
         // Also cancels a delayed reveal still counting down.
         HideEvacuateArrow();
 
+
+
         GameModeManager modeManager = FindFirstObjectByType<GameModeManager>();
         if (modeManager != null)
             modeManager.ResetToPhase1();
@@ -1469,6 +1499,13 @@ public class SimulationManager : MonoBehaviour
         {
             Debug.Log($"[SimulationManager] Completed. Submitting for validation. Local score: {finalScore}");
 
+            // Fires here, NOT after the server responds. `won` means the player
+            // beat the clock, which is the thing they just did and the thing
+            // they are owed feedback on. Laravel may still fail them on
+            // penalties — that verdict arrives seconds later in the panel, and
+            // pairing a sound with it would make the audio lag the moment.
+            AudioManager.Play(winSound);
+
             ResultsUIManager resultsUI = FindFirstObjectByType<ResultsUIManager>();
             if (resultsUI != null)
                 resultsUI.ShowSubmitting();
@@ -1478,12 +1515,35 @@ public class SimulationManager : MonoBehaviour
         else
         {
             Debug.Log("[SimulationManager] LOSE — timer expired. Recording the attempt.");
+
+            AudioManager.Play(loseSound);
+
             onLose.Invoke();
+        }
+
+        // A WRONG DECISION CAN ALSO END AS A TIMEOUT, and both are real.
+        //
+        // TwoFireDecision holds the run for about six seconds after the
+        // wrong fire dies so the player can watch the doorway close. If
+        // the clock happens to run out inside that window, Update() ends
+        // the run first — with no reason — and the attempt would be filed
+        // as a plain timeout even though the player saw WRONG DECISION on
+        // screen.
+        //
+        // So when no reason was passed and the wrong fire was chosen, name
+        // it. The panel and the record then agree, which is the whole point
+        // of sending this at all.
+        //
+        // Null in Kitchen and Classroom, so this is a no-op there.
+        if (string.IsNullOrEmpty(failReason) && !won &&
+            twoFireDecision != null && twoFireDecision.WrongFireChosen)
+        {
+            failReason = "wrong_decision";
         }
 
         if (resultsSubmitter != null)
         {
-            resultsSubmitter.Submit(finalScore, totalPenaltySeconds, stepResults, won);
+            resultsSubmitter.Submit(finalScore, totalPenaltySeconds, stepResults, won, failReason);
         }
         else
         {

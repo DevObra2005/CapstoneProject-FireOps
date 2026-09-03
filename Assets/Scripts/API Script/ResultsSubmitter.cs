@@ -30,9 +30,9 @@ public class ResultsSubmitter : MonoBehaviour
     [Tooltip("The run PASSED. Show the Win screen.")]
     public SavedResultEvent onSaved;
 
-    [Tooltip("The run FAILED — timeout or score below 50%. Show the Lose " +
-             "screen. The attempt is recorded unless the participant had " +
-             "already passed this environment.")]
+    [Tooltip("The run FAILED — timeout, wrong decision, or score below 50%. " +
+             "Show the Lose screen. The attempt is recorded unless the " +
+             "participant had already passed this environment.")]
     public RetryResultEvent onRetry;
 
     [Tooltip("Laravel unreachable. The attempt was NOT recorded.")]
@@ -43,23 +43,45 @@ public class ResultsSubmitter : MonoBehaviour
 
     // ── Called by SimulationManager when the run ends ─────────────────
     //
-    // NOTE THE PARAMETER. This used to be called only on a win, and
+    // NOTE THE PARAMETERS. This used to be called only on a win, and
     // hardcoded phase2_passed = true. Every attempt is submitted now, so
     // the caller has to say which kind it was:
     //
     //   passed = true   → finished all steps with time left
-    //   passed = false  → the timer hit zero
+    //   passed = false  → the run ended in a loss
     //
     // A low-score failure still comes through as passed = true here —
     // the player DID beat the clock. Laravel works out the score and
     // sends back passed = false. That decision is the server's, not ours.
-    public void Submit(int phase2Score, int totalPenalties, List<StepResult> steps, bool passed)
+    //
+    // ── WHY failReason WAS ADDED ──────────────────────────────────────
+    //
+    // Laravel used to INFER the reason from what it could see: not
+    // passed, no time left, so it wrote "timeout". That inference was
+    // right while a timeout was the only loss Unity could detect.
+    //
+    // It stopped being right when the Office decision scenario started
+    // ending runs early. A player who clears the wrong fire loses with
+    // fifty seconds still on the clock — Unity's own lose panel says
+    // WRONG DECISION, and the admin panel said "Ran out of time" for the
+    // same attempt. Two screens describing one run differently, and the
+    // one staff read was the wrong one.
+    //
+    // The server cannot work this out. Only Unity knows a decision was
+    // made, so only Unity can say so.
+    //
+    // EMPTY IS THE SAFE DEFAULT. Leave it out and Laravel falls back to
+    // exactly the inference it does today, so Kitchen, Classroom and
+    // every existing record keep working with no change.
+    public void Submit(int phase2Score, int totalPenalties, List<StepResult> steps,
+                       bool passed, string failReason = null)
     {
-        StartCoroutine(SubmitCoroutine(phase2Score, totalPenalties, steps, passed));
+        StartCoroutine(SubmitCoroutine(phase2Score, totalPenalties, steps, passed, failReason));
     }
 
     private IEnumerator SubmitCoroutine(int phase2Score, int totalPenalties,
-                                        List<StepResult> steps, bool passed)
+                                        List<StepResult> steps, bool passed,
+                                        string failReason)
     {
         string token = PlayerPrefs.GetString("participant_token", "");
         int eventId = PlayerPrefs.GetInt("participant_event_id", 0);
@@ -82,6 +104,13 @@ public class ResultsSubmitter : MonoBehaviour
             phase2_score = phase2Score,
             total_penalties = totalPenalties,
             phase2_passed = passed,   // was hardcoded true — now real
+
+            // JsonUtility writes a null string as "" rather than omitting
+            // the key, so Laravel sees an empty string when there is no
+            // reason to send. Its validation must accept that as "not
+            // given" — see the note above on falling back to inference.
+            fail_reason = failReason,
+
             steps = steps
         };
 
@@ -148,7 +177,8 @@ public class ResultsSubmitter : MonoBehaviour
 #if UNITY_EDITOR
         Debug.Log($"[ResultsSubmitter] Attempt #{result.attempt_number} — " +
                   $"passed: {result.passed}, score: {result.percentage_score}%, " +
-                  $"fail_reason: '{result.fail_reason}', " +
+                  $"sent fail_reason: '{failReason}', " +
+                  $"stored fail_reason: '{result.fail_reason}', " +
                   $"recorded: {!result.already_recorded}");
 #endif
 

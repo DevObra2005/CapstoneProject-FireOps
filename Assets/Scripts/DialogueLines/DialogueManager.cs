@@ -33,6 +33,32 @@ public class DialogueManager : MonoBehaviour
     [Tooltip("Right offset when a video IS showing")]
     public float textRightWithVideo = 250f;
 
+    // -------------------------------------------------------
+    // AUDIO
+    //
+    // Every clip here is OPTIONAL. Each call is null-guarded inside
+    // AudioManager.Play(), so an empty slot is a silent no-op — which is
+    // what keeps a scene without an AudioManager working unchanged.
+    //
+    // The three sounds map onto the three things the player perceives:
+    // the panel arriving, their own tap landing, and the panel leaving.
+    // -------------------------------------------------------
+    [Header("Audio")]
+    [Tooltip("Plays once when the dialogue panel slides IN. A short whoosh " +
+             "or pop. Leave empty to skip.")]
+    public AudioClip popupSound;
+
+    [Tooltip("Plays on every NEXT tap. Leave empty to skip.")]
+    public AudioClip tapSound;
+
+    [Tooltip("Plays once when the dialogue panel slides OUT.\n\n" +
+             "NOTE: on the final line this fires roughly one frame after the " +
+             "tap sound, since the tap is what triggers the close. If the two " +
+             "sound cluttered together, use a softer close clip rather than " +
+             "delaying it — a delayed close would drift out of sync with the " +
+             "slide animation.")]
+    public AudioClip closeSound;
+
     [Header("Animation")]
     [Tooltip("The object that slides — usually SpeechBubble")]
     public RectTransform slidePanel;
@@ -52,7 +78,7 @@ public class DialogueManager : MonoBehaviour
     // so the final button reads "GOT IT" instead of "DO IT".
     private bool isCompletionDialogue = false;
 
-    // NEW: an optional override for the final button's text.
+    // An optional override for the final button's text.
     // When this is empty, the button falls back to the usual
     // "GOT IT" / "DO IT" behaviour. When it's set (e.g. "START"),
     // that word is used instead. Cleared automatically at the end
@@ -88,7 +114,7 @@ public class DialogueManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
-    // NEW: Four-argument version — lets the caller name the final
+    // Four-argument version — lets the caller name the final
     // button themselves, e.g. "START" for the Phase 2 briefing.
     //
     // Pass "" (empty) for finalButtonText and it behaves exactly
@@ -120,6 +146,11 @@ public class DialogueManager : MonoBehaviour
 
     IEnumerator SlideIn()
     {
+        // The pop fires HERE rather than in StartDialogue, so it lands on the
+        // same frame the panel starts moving. Called before the yield break
+        // below so a scene with no slidePanel still gets the sound.
+        AudioManager.Play(popupSound);
+
         if (slidePanel == null) yield break;
 
         Vector2 start = slideHomePos + new Vector2(0f, -slideDistance);
@@ -141,6 +172,11 @@ public class DialogueManager : MonoBehaviour
 
     IEnumerator SlideOutThenClose()
     {
+        // Mirrors the pop in SlideIn — fires as the panel starts moving away,
+        // and sits above the null check for the same reason: a scene with no
+        // slidePanel still gets the sound.
+        AudioManager.Play(closeSound);
+
         if (slidePanel != null)
         {
             Vector2 start = slidePanel.anchoredPosition;
@@ -298,6 +334,11 @@ public class DialogueManager : MonoBehaviour
 
     void OnNextPressed()
     {
+        // One sound at the top, before the branch. Every tap gets feedback —
+        // including the skip-typing tap, which is still a real press the
+        // player made and would otherwise feel unresponsive.
+        AudioManager.Play(tapSound);
+
         // First tap skips the typing instead of advancing
         if (isTyping)
         {

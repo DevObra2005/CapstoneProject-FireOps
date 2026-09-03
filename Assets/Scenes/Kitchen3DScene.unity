@@ -382,15 +382,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Phase2Briefing
   briefingLines:
   - text: "This is the simulation. Everything I taught you, you use now. Look \u2014
-      there is a fire."
+      the LPG is on fire."
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
-  - text: That is what octopus wiring becomes when nobody acts on it. Overheated
-      cords, then flames.
+  - text: That is what a worn gas hose becomes when nobody replaces it. Leaking gas,
+      then flames.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: Show me the proper way to use the extinguisher, exactly as I taught you.
-      Put the fire out, then get to the door. Ninety seconds, starting now.
+  - text: Show me the proper way to smother it, exactly as I taught you. Wet, cover,
+      turn off, leave. Ninety seconds, starting now.
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
   startDelay: 1
@@ -1875,6 +1875,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 178738684}
   m_CullTransparentMesh: 1
+--- !u!1 &186125433
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 186125435}
+  - component: {fileID: 186125434}
+  m_Layer: 0
+  m_Name: SceneAudioProfile
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &186125434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 186125433}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2a9ea58da7ecb64b919d9da7266c8ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneAudioProfile
+  phase1Music: {fileID: 8300000, guid: 886a501cec498144e836743443831ed0, type: 3}
+  phase1Ambient: {fileID: 8300000, guid: 79e544ba708dd3245a4a0bae89ad1f8d, type: 3}
+  phase1PlayOnStart: 1
+  phase2Music: {fileID: 8300000, guid: 69ceeaaa891110749890c511675feed0, type: 3}
+  phase2Ambient: {fileID: 0}
+  phase2PlayOnStart: 0
+--- !u!4 &186125435
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 186125433}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.18358, y: 1, z: -3.45013}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &187309419
 GameObject:
   m_ObjectHideFlags: 0
@@ -5231,6 +5281,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 499cf4bbd914cbd449240b600b180500, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1766011346}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 499cf4bbd914cbd449240b600b180500, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1766011347}
   m_SourcePrefab: {fileID: 100100000, guid: 499cf4bbd914cbd449240b600b180500, type: 3}
 --- !u!1 &801694264
 GameObject:
@@ -6178,7 +6231,7 @@ MonoBehaviour:
   moveDuration: 1
   travelDuration: 0.5
   weightBlendSpeed: 4
-  enableTestKeys: 1
+  enableTestKeys: 0
   sculptMode: 0
   sculptGrip: 1
 --- !u!114 &872237300
@@ -6224,6 +6277,8 @@ MonoBehaviour:
   towelInteractable: {fileID: 1766011344}
   wctlButtons: {fileID: 1343956942}
   valveTurn: {fileID: 1884171299}
+  winSound: {fileID: 8300000, guid: a2097b84923f1644c94c242e69f3c0b8, type: 3}
+  loseSound: {fileID: 8300000, guid: b019a8c24134a224a956635839c47388, type: 3}
   resultsSubmitter: {fileID: 90235161}
   pressAlarm: {fileID: 0}
   extinguisherAnimator: {fileID: 0}
@@ -12034,9 +12089,7 @@ GameObject:
   m_Component:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
-  - component: {fileID: 963194226}
   - component: {fileID: 963194229}
-  - component: {fileID: 963194230}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -12044,14 +12097,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &963194226
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
 --- !u!20 &963194227
 Camera:
   m_ObjectHideFlags: 0
@@ -12162,18 +12207,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &963194230
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dcb8ffbfa2afb2d43a0e1862ebbe435f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KeyTestScript
 --- !u!4 &1021107161 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3412993077180232403, guid: 499cf4bbd914cbd449240b600b180500, type: 3}
@@ -13742,6 +13775,9 @@ MonoBehaviour:
   dialogueTextRect: {fileID: 131868411}
   textRightNormal: 30
   textRightWithVideo: 230
+  popupSound: {fileID: 8300000, guid: f1bf84b9782f5cb40838467e46cc5815, type: 3}
+  tapSound: {fileID: 8300000, guid: 5bb3ea4559ba4e343af5b0c58d218246, type: 3}
+  closeSound: {fileID: 8300000, guid: 1a8bf7156669f8d42a45c24c3370d293, type: 3}
   slidePanel: {fileID: 1693831600}
   slideDistance: 400
   slideDuration: 0.4
@@ -13777,14 +13813,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PhaseTransitionManager
   useMarkerArrow: 1
   promptLines:
-  - text: "Good work \u2014 you've handled every hazard in this Kitchen"
+  - text: "Good work \u2014 you've handled every hazard in this kitchen"
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
   - text: But knowing what causes a fire is only half of it. You also need to know
       what to do when one actually starts.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-  - text: Look for the wet blanket. Go to it.
+  - text: Look for the kitchen towel. Go to it.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
   teachTarget1: {fileID: 1625928391}
@@ -13801,20 +13837,24 @@ MonoBehaviour:
       the flame goes out.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: Wet it, then wring it out. A dripping towel splashes, and steam near a
-      gas flame will burn your hands.
+  - text: "First, wet it \u2014 then wring it out. A dripping towel splashes, and
+      steam near a gas flame will burn your hands."
     characterPose: {fileID: 0}
     demoVideo: {fileID: 0}
-  - text: Lay it down. Do not throw it. A thrown towel fans the flame and can knock
-      the hose loose.
+  - text: Second, lay it over the flame. Lay, never throw. A thrown towel misses,
+      or fans the fire instead of smothering it.
     characterPose: {fileID: 0}
     demoVideo: {fileID: 0}
-  - text: Leave it in place. Lifting it to check lets the air back in, and gas relights
-      instantly.
+  - text: Third, close the regulator valve. The towel stops the flame, but only shutting
+      the gas stops it coming back.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-  - text: "But the towel only kills the flame \u2014 the gas is still leaking underneath
-      it. Look at the tank valve. That is what actually ends this."
+  - text: Last, leave. Even with the fire out, gas may still be in the room. Get
+      out and call the fire station.
+    characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
+    demoVideo: {fileID: 0}
+  - text: "You've completed the learning module. What comes next is a real  scenario
+      \u2014 timed, and without guidance. Everything you need, you "
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
   teachTarget2: {fileID: 0}
@@ -13863,6 +13903,7 @@ MonoBehaviour:
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
   confirmPanel: {fileID: 680703511}
+  confirmSound: {fileID: 8300000, guid: 07f60ad27ae4e774092bc8c7a2e5b9b3, type: 3}
   loadingTagline: PREPARING SIMULATION
 --- !u!224 &1299823327
 RectTransform:
@@ -15091,7 +15132,7 @@ MonoBehaviour:
   correctColor: {r: 0.18, g: 0.8, b: 0.44, a: 1}
   wrongColor: {r: 0.91, g: 0.3, b: 0.24, a: 1}
   hintColor: {r: 0.95, g: 0.68, b: 0.18, a: 1}
-  hintTitle: REPOSITION
+  hintTitle: MOVE
 --- !u!114 &1498197243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17496,7 +17537,7 @@ MonoBehaviour:
   arcDirection: {x: 1, y: 0.3, z: 0}
   rotationLead: 0.15
   lowerDuration: 0.55
-  soakDuration: 2
+  soakDuration: 3
   wringDuration: 1
   liftDuration: 0.45
   wringAngle: 40
@@ -17507,8 +17548,8 @@ MonoBehaviour:
   faucetWater: {fileID: 961433869}
   wringDrips: {fileID: 0}
   wetness: {fileID: 1766011342}
-  audioSource: {fileID: 0}
-  runningWaterClip: {fileID: 0}
+  audioSource: {fileID: 1766011347}
+  runningWaterClip: {fileID: 8300000, guid: 356755a51afc69e4194dda4aae90a37b, type: 3}
   wringClip: {fileID: 0}
 --- !u!114 &1766011341
 MonoBehaviour:
@@ -17657,6 +17698,103 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.21746477, y: 0.25014693, z: 0.26845017}
   m_Center: {x: 0.008504701, y: -0.19893625, z: -0.0124641135}
+--- !u!82 &1766011347
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1766011338}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &1771883492
 GameObject:
   m_ObjectHideFlags: 0
@@ -19413,7 +19551,7 @@ MonoBehaviour:
       Today we will cover how to identify fire hazards before they cause harm.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-  - text: This office has two of common hazards Look around, and tap anything you
+  - text: This kitchen has two of common hazards Look around, and tap anything you
       think is a risk.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
@@ -21011,6 +21149,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2053205189}
   m_CullTransparentMesh: 1
+--- !u!1 &2057518564
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2057518566}
+  - component: {fileID: 2057518565}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2057518565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2057518564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50e3b21a8d4c64d4e82ac9a900a7b70e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  audioSource: {fileID: 0}
+  clickSound: {fileID: 0}
+  musicVolume: 0.35
+  ambientVolume: 0.45
+  sfxVolume: 1
+  fadeDuration: 1
+--- !u!4 &2057518566
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2057518564}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.18358, y: 1, z: -3.45013}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2069415090
 GameObject:
   m_ObjectHideFlags: 0
@@ -21623,8 +21811,36 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       insertIndex: -1
       addedObject: {fileID: 857421090}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8099014300572872465, guid: 813094771524329438eb157cf1143aae, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2216348096976786967}
   m_SourcePrefab: {fileID: 100100000, guid: 813094771524329438eb157cf1143aae, type: 3}
+--- !u!1 &2216348096976786966 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8099014300572872465, guid: 813094771524329438eb157cf1143aae, type: 3}
+  m_PrefabInstance: {fileID: 2216348096976786965}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2216348096976786967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2216348096976786966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b1f91c01137e974f9fb1f7c452f98f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FootstepController
+  footstepClips:
+  - {fileID: 8300000, guid: e682bc79049b1e8498312f529588f09c, type: 3}
+  - {fileID: 8300000, guid: 6b7246af1617fd647a8f727261d1b19d, type: 3}
+  - {fileID: 8300000, guid: 392cf493f762e7040a0f33e5e1f0bde7, type: 3}
+  stepInterval: 0.5
+  minSpeed: 0.5
+  volume: 0.5
+  pitchVariation: 0.1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -21664,3 +21880,5 @@ SceneRoots:
   - {fileID: 872237301}
   - {fileID: 604487687}
   - {fileID: 2075057421}
+  - {fileID: 186125435}
+  - {fileID: 2057518566}
