@@ -31,3 +31,4 @@ Capstone Project_BurstDebugInformation_DoNotShip/
 # OS files
 .DS_Store
 Thumbs.db
+.utmp/
