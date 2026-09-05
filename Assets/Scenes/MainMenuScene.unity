@@ -1529,6 +1529,7 @@ GameObject:
   m_Component:
   - component: {fileID: 630086013}
   - component: {fileID: 630086014}
+  - component: {fileID: 630086015}
   m_Layer: 0
   m_Name: SceneController
   m_TagString: Untagged
@@ -1563,6 +1564,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12f5fa2a348026e49bf8dd0ba75162e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
+--- !u!114 &630086015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 630086012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28a58728f429d4541b93413a866bf127, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SettingsMenuLoader
 --- !u!1 &763850726
 GameObject:
   m_ObjectHideFlags: 0
@@ -2544,6 +2557,7 @@ GameObject:
   - component: {fileID: 1633934284}
   - component: {fileID: 1633934283}
   - component: {fileID: 1633934282}
+  - component: {fileID: 1633934285}
   m_Layer: 0
   m_Name: AudioManager
   m_TagString: Untagged
@@ -2681,6 +2695,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1633934285
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1633934281}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a7c5ae125dd1fb418ff3f327d878b72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GlobalAudioManager
+  masterMixer: {fileID: 24100000, guid: 8c983d56cdeeb16419c163d4f571e0c3, type: 2}
 --- !u!1 &1653459045
 GameObject:
   m_ObjectHideFlags: 0
@@ -2765,6 +2792,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 630086015}
+        m_TargetAssemblyTypeName: SettingsMenuLoader, Assembly-CSharp
+        m_MethodName: OpenSettings
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1633934282}
         m_TargetAssemblyTypeName: AudioManager, Assembly-CSharp
         m_MethodName: PlayClick
@@ -2869,7 +2908,7 @@ AudioSource:
   m_GameObject: {fileID: 1718042908}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: 24300002, guid: 8c983d56cdeeb16419c163d4f571e0c3, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: df953dbdc241666438957d18ff52cd19, type: 3}
   m_PlayOnAwake: 0
@@ -3076,16 +3115,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1985775256}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: 0.0035040672, z: -0, w: 0.99999386}
+  m_LocalPosition: {x: 0, y: 0, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 139829581}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0.402, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 2.6300201}
+  m_AnchoredPosition: {x: 0, y: 2.6300354}
   m_SizeDelta: {x: 0, y: 20}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1985775258
