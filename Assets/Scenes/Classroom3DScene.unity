@@ -6148,7 +6148,7 @@ MonoBehaviour:
   pinDropClipLength: 0.5
   rightHandGrip: {fileID: 473489021}
   sprayVFX: {fileID: 544052601}
-  fireController: {fileID: 0}
+  fireController: {fileID: 1746504993}
   twoFireDecision: {fileID: 0}
   relaxDuration: 0.8
   releaseLeftHandOnFireOut: 1
@@ -12774,7 +12774,7 @@ Transform:
   m_GameObject: {fileID: 673330524}
   serializedVersion: 2
   m_LocalRotation: {x: -0.13962902, y: -0.26607162, z: 0.09757649, w: 0.9487826}
-  m_LocalPosition: {x: 0.158, y: -0.519, z: 0.546}
+  m_LocalPosition: {x: 0.172, y: -0.525, z: 0.524}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14215,7 +14215,7 @@ MonoBehaviour:
   correctColor: {r: 0.18, g: 0.8, b: 0.44, a: 1}
   wrongColor: {r: 0.91, g: 0.3, b: 0.24, a: 1}
   hintColor: {r: 0.95, g: 0.68, b: 0.18, a: 1}
-  hintTitle: REPOSITION
+  hintTitle: MOVE
 --- !u!1001 &731739522
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25700,7 +25700,7 @@ MonoBehaviour:
   showToStep: 7
   requireFirePosition: 1
   fireTarget: {fileID: 0}
-  secondFireTarget: {fileID: 0}
+  secondFireTarget: {fileID: 1746504991}
   playerCamera: {fileID: 1432412427}
   tooCloseDistance: 1.5
   tooFarDistance: 4
