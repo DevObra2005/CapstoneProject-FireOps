@@ -37,6 +37,8 @@ public class ExtinguisherSprayVFX : MonoBehaviour
     [SerializeField] private AudioClip sprayClip;
 
     [Range(0f, 1f)]
+    [Tooltip("This is the MIX. The player's SFX slider scales it via the " +
+             "mixer group, rather than replacing it.")]
     [SerializeField] private float volume = 0.7f;
 
     [Tooltip("Seconds to fade the sound out when the fire goes out. Matches " +
@@ -62,6 +64,20 @@ public class ExtinguisherSprayVFX : MonoBehaviour
         // 2D. The extinguisher is in the player's own hands, so distance
         // falloff would be wrong — it is never far away.
         source.spatialBlend = 0f;
+    }
+
+    private void Start()
+    {
+        if (source == null) return;
+
+        // A source built with AddComponent has outputAudioMixerGroup set to
+        // null, and null routes straight to the AudioListener — the mixer
+        // never sees it, so the SFX slider could never affect the spray.
+        //
+        // Start() rather than Awake() so SettingsManager has finished its
+        // own Awake first. Null when no SettingsManager exists, which just
+        // leaves the source unrouted rather than throwing.
+        source.outputAudioMixerGroup = SettingsManager.SfxGroup;
     }
 
     // ── Called to START the spray ─────────────────────────────────

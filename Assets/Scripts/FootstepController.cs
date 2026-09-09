@@ -18,7 +18,9 @@ public class FootstepController : MonoBehaviour
 
     [Header("Volume")]
     [Range(0f, 1f)]
-    [Tooltip("Footsteps should sit UNDER the music, not on top of it.")]
+    [Tooltip("Footsteps should sit UNDER the music, not on top of it. " +
+             "This is the MIX. The player's SFX slider scales it via the " +
+             "mixer group, rather than replacing it.")]
     public float volume = 0.5f;
 
     [Tooltip("Random pitch range. Small variation stops repeated clips " +
@@ -42,6 +44,18 @@ public class FootstepController : MonoBehaviour
         source.playOnAwake = false;
         source.loop = false;
         source.spatialBlend = 0f;
+    }
+
+    void Start()
+    {
+        // A source built with AddComponent has outputAudioMixerGroup set to
+        // null, and null routes straight to the AudioListener — the mixer
+        // never sees it, so the SFX slider could never affect footsteps.
+        //
+        // Start() rather than Awake() so SettingsManager has finished its
+        // own Awake first. Null when no SettingsManager exists, which just
+        // leaves the source unrouted rather than throwing.
+        source.outputAudioMixerGroup = SettingsManager.SfxGroup;
     }
 
     void Update()

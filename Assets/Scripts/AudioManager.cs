@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 public class AudioManager : MonoBehaviour
@@ -26,6 +28,18 @@ public class AudioManager : MonoBehaviour
              "scene loads first.")]
     public AudioClip clickSound;
 
+    // -------------------------------------------------------
+    // THESE ARE THE MIX, NOT THE PLAYER'S VOLUME.
+    //
+    // They set the balance between music, ambience and effects, and are
+    // yours to tune at design time. The player's sliders sit on top of them
+    // via the mixer groups, so the final level is:
+    //
+    //     musicVolume  x  the Music group's slider
+    //
+    // The player scales your balance rather than replacing it. Leave these
+    // where they are — changing them changes the mix for everyone.
+    // -------------------------------------------------------
     [Header("Volume (0 - 1)")]
     [Range(0f, 1f)] public float musicVolume = 0.35f;
     [Range(0f, 1f)] public float ambientVolume = 0.45f;
@@ -62,6 +76,75 @@ public class AudioManager : MonoBehaviour
         musicSource = MakeSource(true);
         ambientSource = MakeSource(true);
         sfxSource = MakeSource(false);
+
+        // UI clicks must still be audible while the pause menu has set
+        // AudioListener.pause = true. Without this, opening the pause menu
+        // silences its own buttons.
+        sfxSource.ignoreListenerPause = true;
+
+        // Subscribed AFTER the singleton guard, so only the surviving
+        // instance listens. A duplicate that destroys itself never gets here.
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    void Start()
+    {
+        RouteToMixer();
+    }
+
+    // -------------------------------------------------------
+    // WHY ROUTING RUNS AGAIN ON EVERY SCENE LOAD
+    //
+    // This object is DontDestroyOnLoad, so it is created once — in whatever
+    // scene happens to load first — and lives forever after.
+    //
+    // Start from MainMenuScene and SettingsManager is right there, so the
+    // groups resolve and everything routes correctly.
+    //
+    // Start from LoginScene and this AudioManager is built several scenes
+    // earlier than SettingsManager. Its Start() finds no SettingsManager, so
+    // both groups come back null. Null means "go straight to the
+    // AudioListener" — the mixer never sees these sources, and no slider can
+    // ever affect them. That state then survives into every environment,
+    // which is why simulation audio was the worst hit.
+    //
+    // Re-routing on sceneLoaded fixes itself the moment SettingsManager
+    // appears. sceneLoaded fires after every Awake in the new scene, so
+    // SettingsManager.Instance is already set by the time this runs.
+    // -------------------------------------------------------
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        RouteToMixer();
+    }
+
+    private void RouteToMixer()
+    {
+        AudioMixerGroup music = SettingsManager.MusicGroup;
+        AudioMixerGroup sfx = SettingsManager.SfxGroup;
+
+        // Null-guarded. Still null means no SettingsManager exists yet, which
+        // leaves the sources unrouted — the next scene load tries again.
+        if (musicSource != null) musicSource.outputAudioMixerGroup = music;
+
+        // Ambience follows Music, not SFX. Room tone is background
+        // atmosphere; the fire crackle and alarm are the training cues.
+        // A trainee who turns music off almost certainly wants the hum
+        // gone too. Change this one line if you disagree.
+        if (ambientSource != null) ambientSource.outputAudioMixerGroup = music;
+
+        if (sfxSource != null) sfxSource.outputAudioMixerGroup = sfx;
+
+        if (audioSource != null)
+        {
+            audioSource.outputAudioMixerGroup = sfx;
+            audioSource.ignoreListenerPause = true;
+        }
     }
 
     private AudioSource MakeSource(bool loop)

@@ -25,6 +25,26 @@ public class EventListWrapper
 // ── Main Script ───────────────────────────────────────────────────────
 public class EventSelectionManager : MonoBehaviour
 {
+    // -------------------------------------------------------
+    // SELECTED EVENT KEYS, AS CONSTANTS.
+    //
+    // MainMenuSettingsUI reads these back to fill the Event tab, and
+    // clears them on sign out. Loose string literals in two files fail
+    // silently: GetString on a key that was never written just returns
+    // empty, so a label goes blank and nothing tells you why.
+    //
+    // DAY and MONTH are stored separately on purpose. The settings Event
+    // tab reuses the same red date chip as the cards on this screen, and
+    // that chip wants "14" and "AUG" as two fields.
+    // -------------------------------------------------------
+    public const string KEY_EVENT_ID = "participant_event_id";
+    public const string KEY_EVENT_NAME = "participant_event_name";
+    public const string KEY_EVENT_DAY = "participant_event_day";
+    public const string KEY_EVENT_MONTH = "participant_event_month";
+
+    private const string LOGIN_SCENE = "LoginScene";
+    private const string MAIN_MENU_SCENE = "MainMenuScene";
+
     [Header("UI References")]
     public GameObject eventButtonPrefab;  // Style A card prefab
     public Transform contentParent;       // Content object inside Scroll View
@@ -32,13 +52,18 @@ public class EventSelectionManager : MonoBehaviour
 
     void Start()
     {
-        noEventsText.SetActive(false);
+        // Null-guarded. Opening this scene directly in the Editor with an
+        // unassigned field used to throw here before any request ran.
+        if (noEventsText != null) noEventsText.SetActive(false);
+
         StartCoroutine(FetchMyEvents());
     }
 
     IEnumerator FetchMyEvents()
     {
-        string token = PlayerPrefs.GetString("participant_token", "");
+        // Token key comes from LoginManager, so the screen that writes it
+        // and the screen that reads it cannot disagree.
+        string token = LoginManager.GetToken();
         string url = ApiConfig.EventsUrl;
 
         UnityWebRequest request = UnityWebRequest.Get(url);
@@ -51,7 +76,7 @@ public class EventSelectionManager : MonoBehaviour
             request.result == UnityWebRequest.Result.DataProcessingError)
         {
             Debug.LogError("FetchMyEvents error: " + request.error);
-            noEventsText.SetActive(true);
+            ShowNoEvents();
             yield break;
         }
 
@@ -59,15 +84,31 @@ public class EventSelectionManager : MonoBehaviour
         Debug.Log("Events response (" + request.responseCode + "): " + request.downloadHandler.text);
 #endif
 
+        // ── 401 = the saved token is no longer valid ──
+        //
+        // This matters now that LoginManager auto-logins on a saved token.
+        // If staff deletes the participant, or the token is revoked, the
+        // token still SITS on the device — so the app would skip the login
+        // screen, land here, fail, and show "no events" forever with no way
+        // back. Clearing the session breaks that loop: next launch shows
+        // the login form again.
+        if (request.responseCode == 401)
+        {
+            Debug.LogWarning("[EventSelection] Token rejected (401). Clearing session.");
+            LoginManager.ClearSession();
+            SceneManager.LoadScene(LOGIN_SCENE);
+            yield break;
+        }
+
         if (request.responseCode == 200)
         {
             string json = request.downloadHandler.text;
             string wrappedJson = "{\"events\":" + json + "}";
             EventListWrapper wrapper = JsonUtility.FromJson<EventListWrapper>(wrappedJson);
 
-            if (wrapper.events == null || wrapper.events.Count == 0)
+            if (wrapper == null || wrapper.events == null || wrapper.events.Count == 0)
             {
-                noEventsText.SetActive(true);
+                ShowNoEvents();
                 yield break;
             }
 
@@ -79,8 +120,13 @@ public class EventSelectionManager : MonoBehaviour
         else
         {
             Debug.LogError("FetchMyEvents failed: " + request.responseCode);
-            noEventsText.SetActive(true);
+            ShowNoEvents();
         }
+    }
+
+    void ShowNoEvents()
+    {
+        if (noEventsText != null) noEventsText.SetActive(true);
     }
 
     // ── Creates one Style A card from the prefab template ─────────────
@@ -91,7 +137,7 @@ public class EventSelectionManager : MonoBehaviour
         // Event name
         SetText(cardObj, "EventNameText", ev.name);
 
-        // Split the date ("2026-08-14") into day ("14") and month ("Aug")
+        // Split the date ("2026-08-14") into day ("14") and month ("AUG")
         string day, month;
         ParseDate(ev.date, out day, out month);
 
@@ -107,7 +153,7 @@ public class EventSelectionManager : MonoBehaviour
     }
 
     // Finds a TMP child ANYWHERE under the card (recursive) and sets its text.
-    // Uses GetComponentsInChildren so it finds fields nested inside sub-objects
+    // Uses a recursive search so it finds fields nested inside sub-objects
     // like DateBlock — transform.Find only checks DIRECT children, which is why
     // the date fields (children of DateBlock) weren't being found before.
     void SetText(GameObject root, string childName, string value)
@@ -139,7 +185,9 @@ public class EventSelectionManager : MonoBehaviour
         return null;
     }
 
-    // Parses "yyyy-MM-dd" into day number + short month name (e.g. 29 / Jul).
+    // Parses a date into day number + short month name (e.g. 29 / JUL).
+    // Handles both "2026-08-14" and a full timestamp like
+    // "2026-08-14T00:00:00", which some Laravel casts return.
     void ParseDate(string raw, out string day, out string month)
     {
         day = raw;
@@ -147,37 +195,43 @@ public class EventSelectionManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(raw)) return;
 
-        // Some APIs send a full timestamp ("2026-08-14T00:00:00").
         string datePart = raw;
         int tIndex = raw.IndexOfAny(new char[] { 'T', ' ' });
         if (tIndex > 0) datePart = raw.Substring(0, tIndex);
 
-        if (System.DateTime.TryParseExact(
-                datePart, "yyyy-MM-dd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out System.DateTime parsed))
-        {
-            day = parsed.Day.ToString("00");   // "29", "01"
-            month = parsed.ToString("MMM", CultureInfo.InvariantCulture).ToUpper(); // "JUL"
-        }
-        else if (System.DateTime.TryParse(datePart, out parsed))
-        {
-            day = parsed.Day.ToString("00");
-            month = parsed.ToString("MMM", CultureInfo.InvariantCulture).ToUpper();
-        }
+        System.DateTime parsed;
+
+        bool ok = System.DateTime.TryParseExact(
+                      datePart, "yyyy-MM-dd",
+                      CultureInfo.InvariantCulture,
+                      DateTimeStyles.None,
+                      out parsed)
+                  || System.DateTime.TryParse(datePart, out parsed);
+
+        if (!ok) return;
+
+        day = parsed.Day.ToString("00");                                        // "29", "01"
+        month = parsed.ToString("MMM", CultureInfo.InvariantCulture).ToUpper(); // "JUL"
     }
 
     void OnEventSelected(EventData ev)
     {
-        PlayerPrefs.SetInt("participant_event_id", ev.id);
-        PlayerPrefs.SetString("participant_event_name", ev.name);
+        PlayerPrefs.SetInt(KEY_EVENT_ID, ev.id);
+        PlayerPrefs.SetString(KEY_EVENT_NAME, ev.name);
+
+        // Day and month split here so the settings Event tab can reuse the
+        // same red date chip as the cards on this screen.
+        string day, month;
+        ParseDate(ev.date, out day, out month);
+        PlayerPrefs.SetString(KEY_EVENT_DAY, day);
+        PlayerPrefs.SetString(KEY_EVENT_MONTH, month);
+
         PlayerPrefs.Save();
 
 #if UNITY_EDITOR
         Debug.Log("Selected event: " + ev.name + " (ID: " + ev.id + ")");
 #endif
 
-        SceneManager.LoadScene("MainMenuScene");
+        SceneManager.LoadScene(MAIN_MENU_SCENE);
     }
 }

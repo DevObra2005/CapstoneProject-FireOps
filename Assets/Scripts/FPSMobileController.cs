@@ -11,6 +11,18 @@ public class FPSMobileController : MonoBehaviour
     public float walkSpeed = 3f;
     public float gravity = -9.81f;
 
+    // -------------------------------------------------------
+    // THESE TWO ARE THE BASELINE FEEL, NOT THE PLAYER'S SETTING.
+    //
+    // They are yours to tune. The settings slider multiplies them via
+    // SettingsManager.Sensitivity, so the final turn rate is:
+    //
+    //     lookSensitivityX  x  slider (0.25 to 3.00)
+    //
+    // The player scales your tuning rather than replacing it, which is why
+    // 1.00x on the slider feels exactly like the game did before the
+    // setting existed.
+    // -------------------------------------------------------
     [Header("Look Settings")]
     public Camera playerCamera;
     public float lookSensitivityX = 3f;
@@ -60,6 +72,24 @@ public class FPSMobileController : MonoBehaviour
     void Update()
     {
         if (playerCamera == null || moveJoystick == null) return;
+
+        // -------------------------------------------------------
+        // PAUSE GUARD.
+        //
+        // Time.timeScale = 0 freezes physics and Time.deltaTime, but Update
+        // KEEPS RUNNING. Touch deltas are not time-scaled either, so without
+        // this the camera would keep rotating behind the pause panel while a
+        // trainee drags across it.
+        //
+        // Movement stops on its own at timeScale 0 because controller.Move
+        // is multiplied by Time.deltaTime, but returning here makes both
+        // behave the same way for the same visible reason.
+        // -------------------------------------------------------
+        if (PauseMenuUI.IsPaused)
+        {
+            currentLookDelta = Vector2.zero;
+            return;
+        }
 
         // Freeze camera look while the BFP dialogue is open
         bool isDialogueOpen = DialogueManager.Instance != null
@@ -152,9 +182,24 @@ public class FPSMobileController : MonoBehaviour
         currentLookDelta = Vector2.SmoothDamp(
             currentLookDelta, rawInput, ref lookVelocity, smoothTime);
 
-        rotationX -= currentLookDelta.y * lookSensitivityY;
+        // -------------------------------------------------------
+        // Read fresh every frame rather than cached in Start(). A trainee
+        // who changes sensitivity in the pause menu should feel it the
+        // moment they resume, not on the next scene load.
+        //
+        // Applied AFTER SmoothDamp on purpose. Scaling the raw input first
+        // would push the smoothing filter harder at 3x and change the feel
+        // of the damping, not just the turn rate.
+        //
+        // SettingsManager.Sensitivity returns 1.0 when no SettingsManager
+        // exists, so opening a scene directly in the Editor behaves exactly
+        // as it did before this setting was added.
+        // -------------------------------------------------------
+        float sens = SettingsManager.Sensitivity;
+
+        rotationX -= currentLookDelta.y * lookSensitivityY * sens;
         rotationX = Mathf.Clamp(rotationX, -90f, 90f);
         playerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0f, 0f);
-        transform.Rotate(Vector3.up * currentLookDelta.x * lookSensitivityX);
+        transform.Rotate(Vector3.up * currentLookDelta.x * lookSensitivityX * sens);
     }
 }

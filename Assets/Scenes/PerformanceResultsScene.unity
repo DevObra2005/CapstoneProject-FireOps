@@ -234,8 +234,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -18.8, y: -19.3}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -19, y: -19.3}
+  m_SizeDelta: {x: 30.100006, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &122444495
 MonoBehaviour:
@@ -259,8 +259,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Classroom
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 125cb55b44b24c4393181402bc6200e6, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 125cb55b44b24c4393181402bc6200e6, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 4c63e0bf9a3ac5a459a916aca3f79cc5, type: 2}
+  m_sharedMaterial: {fileID: -7967308479625851634, guid: 4c63e0bf9a3ac5a459a916aca3f79cc5, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1150,7 +1150,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Performance <color=#c0392b>Result</color>
+  m_text: 'Performance Result
 
 '
   m_isRightToLeft: 0
@@ -1185,7 +1185,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 2
+  m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -1546,7 +1546,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 2
+  m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -2024,8 +2024,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -4.2, y: -19.5}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -7, y: -19.5}
+  m_SizeDelta: {x: 4.799999, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &820764751
 MonoBehaviour:
@@ -2049,8 +2049,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Office
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 125cb55b44b24c4393181402bc6200e6, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 125cb55b44b24c4393181402bc6200e6, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 4c63e0bf9a3ac5a459a916aca3f79cc5, type: 2}
+  m_sharedMaterial: {fileID: -7967308479625851634, guid: 4c63e0bf9a3ac5a459a916aca3f79cc5, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3456,8 +3456,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Kitchen
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 125cb55b44b24c4393181402bc6200e6, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 125cb55b44b24c4393181402bc6200e6, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 4c63e0bf9a3ac5a459a916aca3f79cc5, type: 2}
+  m_sharedMaterial: {fileID: -7967308479625851634, guid: 4c63e0bf9a3ac5a459a916aca3f79cc5, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3624,7 +3624,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 2
+  m_fontStyle: 0
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
   m_textAlignment: 65535

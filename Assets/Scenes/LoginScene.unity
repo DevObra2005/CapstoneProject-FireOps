@@ -484,7 +484,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 2
+  m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -4805,6 +4805,7 @@ MonoBehaviour:
   passwordField: {fileID: 677536145}
   loginButton: {fileID: 1083297627}
   messageModal: {fileID: 1680170645}
+  autoLoginEnabled: 1
 --- !u!4 &1926577851
 Transform:
   m_ObjectHideFlags: 0

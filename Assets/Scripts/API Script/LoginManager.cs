@@ -6,6 +6,23 @@ using TMPro;
 
 public class LoginManager : MonoBehaviour
 {
+    // -------------------------------------------------------
+    // SESSION KEYS LIVE HERE, AS CONSTANTS.
+    //
+    // They used to be loose strings typed at each call site. That is fine
+    // while one script reads them. The moment a second script does, a
+    // single typo becomes a silent bug: PlayerPrefs.GetString just returns
+    // empty for a key that was never written, so nothing errors — a label
+    // is simply blank, or a sign out silently clears nothing.
+    //
+    // Public so MainMenuSettingsUI and EventSelectionManager can reference
+    // LoginManager.KEY_TOKEN instead of retyping the literal.
+    // -------------------------------------------------------
+    public const string KEY_TOKEN = "participant_token";
+    public const string KEY_NAME = "participant_name";
+    public const string KEY_EMAIL = "participant_email";
+    public const string KEY_ID = "participant_id";
+
     [Header("Input Fields")]
     public TMP_InputField emailField;
     public TMP_InputField passwordField;
@@ -42,10 +59,71 @@ public class LoginManager : MonoBehaviour
     [Tooltip("Drag ErrorModal here — the object with the MessageModal script on it.")]
     public MessageModal messageModal;
 
+    [Header("Stay Signed In")]
+    [Tooltip("Skip this screen when a saved token exists. Untick to force the " +
+             "login form every launch, which is useful while testing.")]
+    public bool autoLoginEnabled = true;
+
     private const string NEXT_SCENE = "EventSelectionScene";
+
+    // =========================================================
+    //  SESSION HELPERS  (static — callable from any script)
+    // =========================================================
+
+    /// <summary>
+    /// True when a token is stored on this device.
+    ///
+    /// This does NOT prove the token still works. Sanctum tokens survive
+    /// until revoked, so a participant deleted by staff would still pass
+    /// this check and then get a 401 on the first real request. See the
+    /// note on EventSelectionManager below.
+    /// </summary>
+    public static bool HasSavedSession()
+    {
+        return !string.IsNullOrEmpty(PlayerPrefs.GetString(KEY_TOKEN, string.Empty));
+    }
+
+    /// <summary>Returns the saved bearer token, or empty string.</summary>
+    public static string GetToken()
+    {
+        return PlayerPrefs.GetString(KEY_TOKEN, string.Empty);
+    }
+
+    /// <summary>
+    /// Wipes the signed-in participant. Call this on sign out, and also
+    /// whenever the API answers 401, so a dead token cannot trap the user
+    /// in a loop of auto-login followed by failure.
+    ///
+    /// Deletes named keys only. DeleteAll would also wipe audio settings
+    /// and SimulationMode, which have nothing to do with who is signed in.
+    /// </summary>
+    public static void ClearSession()
+    {
+        PlayerPrefs.DeleteKey(KEY_TOKEN);
+        PlayerPrefs.DeleteKey(KEY_NAME);
+        PlayerPrefs.DeleteKey(KEY_EMAIL);
+        PlayerPrefs.DeleteKey(KEY_ID);
+        PlayerPrefs.Save();
+
+        Debug.Log("[Login] Session cleared.");
+    }
+
+    // =========================================================
+    //  STARTUP
+    // =========================================================
 
     void Start()
     {
+        // Auto-login. If a token was saved on a previous launch, skip
+        // straight past this screen. The participant still picks an event,
+        // because that choice is per-session, not per-account.
+        if (autoLoginEnabled && HasSavedSession())
+        {
+            Debug.Log("[Login] Saved session found. Skipping login screen.");
+            UnityEngine.SceneManagement.SceneManager.LoadScene(NEXT_SCENE);
+            return;   // nothing below this matters — the scene is unloading
+        }
+
         if (messageModal == null)
         {
             Debug.LogWarning("[LoginManager] Message Modal is not assigned — " +
@@ -131,11 +209,12 @@ public class LoginManager : MonoBehaviour
             );
 
             // PlayerPrefs = Unity's version of localStorage in the browser.
-            // Key-value storage that persists across scenes.
-            PlayerPrefs.SetString("participant_token", response.token);
-            PlayerPrefs.SetString("participant_name", response.participant.name);
-            PlayerPrefs.SetString("participant_email", response.participant.email);
-            PlayerPrefs.SetInt("participant_id", response.participant.id);
+            // Key-value storage that persists across scenes AND app restarts —
+            // which is exactly what makes the auto-login above work.
+            PlayerPrefs.SetString(KEY_TOKEN, response.token);
+            PlayerPrefs.SetString(KEY_NAME, response.participant.name);
+            PlayerPrefs.SetString(KEY_EMAIL, response.participant.email);
+            PlayerPrefs.SetInt(KEY_ID, response.participant.id);
             PlayerPrefs.Save();
 
 #if UNITY_EDITOR
