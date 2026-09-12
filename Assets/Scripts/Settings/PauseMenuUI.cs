@@ -101,7 +101,12 @@ public class PauseMenuUI : MonoBehaviour
         AudioListener.pause = true;   // freezes ALL audio except sources with
                                       // ignoreListenerPause, which AudioManager
                                       // sets on its SFX source so UI clicks
-                                      // stay audible in here
+                                      // stay audible in here.
+                                      //
+                                      // The voice-over source deliberately does
+                                      // NOT set that flag, so the officer freezes
+                                      // mid-sentence and resumes from the same
+                                      // spot. No extra code needed for pause.
 
         if (pausePanel != null) pausePanel.SetActive(true);
         if (confirmQuitPanel != null) confirmQuitPanel.SetActive(false);
@@ -178,6 +183,19 @@ public class PauseMenuUI : MonoBehaviour
             AudioManager.Instance.StopMusic();
             AudioManager.Instance.StopAmbient();
         }
+
+        // The officer has to be silenced EXPLICITLY.
+        //
+        // AudioManager dies with the scene, so its music stops by itself.
+        // VoiceOverManager does not - it is DontDestroyOnLoad, so it survives
+        // the load and would keep talking over the main menu. Quitting mid
+        // briefing is exactly when a player is most likely to do this.
+        //
+        // This sits AFTER the AudioListener.pause release above on purpose:
+        // unpausing revives the source, and stopping it in the same frame
+        // means it never becomes audible again.
+        if (VoiceOverManager.Instance != null)
+            VoiceOverManager.Instance.Stop();
 
         if (SettingsManager.Instance != null)
             SettingsManager.Instance.SaveToDisk();

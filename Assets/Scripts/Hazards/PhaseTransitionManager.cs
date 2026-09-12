@@ -52,6 +52,16 @@ public class PhaseTransitionManager : MonoBehaviour
     // it saves. Do not add it back: pointing it at another environment
     // would load that environment's Phase 1, not this one's Phase 2.
     //
+    // A PlayerPrefs write of "FireLearningCompleted" (later renamed
+    // "LearningModule") also used to sit in LoadPhaseTwo. It existed for
+    // the FireLearningPopup on the scenario selection screen, which
+    // blocked entry until the learning module was done. That popup and
+    // its check in ScenarioSelection have been removed, so nothing read
+    // the flag any more and the write has gone with them. If a "must
+    // finish the lesson first" gate is ever wanted again, set the flag
+    // here and read it in ScenarioSelection — both halves or neither,
+    // never just the write.
+    //
     // NOTE: [FormerlySerializedAs] preserves the OLD field assignments
     // (alarmPanel, alarmLines, fireExtinguisher, extinguisherLines) so the
     // existing Office scene keeps its references after this rename — no
@@ -291,7 +301,6 @@ public class PhaseTransitionManager : MonoBehaviour
         AudioManager.Instance?.StopMusic();
         AudioManager.Instance?.StopAmbient();
 
-        PlayerPrefs.SetInt("FireLearningCompleted", 1);
         PlayerPrefs.SetInt("SimulationMode", 1);
         PlayerPrefs.Save();
 
