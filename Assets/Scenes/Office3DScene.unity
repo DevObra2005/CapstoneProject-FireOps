@@ -34854,13 +34854,13 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 1546867147}
+  m_TargetGraphic: {fileID: 1819115410}
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 18615500}
-        m_TargetAssemblyTypeName: PhaseTransitionManager, Assembly-CSharp
-        m_MethodName: LoadPhaseTwo
+      - m_Target: {fileID: 300211851}
+        m_TargetAssemblyTypeName: SceneLoader, Assembly-CSharp
+        m_MethodName: LoadMainMenu
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

@@ -3650,7 +3650,7 @@ MonoBehaviour:
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
     voiceClip: {fileID: 8300000, guid: a5f1b8273697bfe4e9e3d92e31d7ebbd, type: 3}
-  - text: eported and handled! That wiring is not a danger anymore.
+  - text: Reported and handled! That wiring is not a danger anymore.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
     voiceClip: {fileID: 8300000, guid: e27ec6d87a20a39448c3891bf2d7c1e8, type: 3}
@@ -28802,9 +28802,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 18615500}
-        m_TargetAssemblyTypeName: PhaseTransitionManager, Assembly-CSharp
-        m_MethodName: LoadPhaseTwo
+      - m_Target: {fileID: 300211851}
+        m_TargetAssemblyTypeName: SceneLoader, Assembly-CSharp
+        m_MethodName: LoadMainMenu
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
