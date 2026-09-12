@@ -59,6 +59,24 @@ public class DialogueManager : MonoBehaviour
              "slide animation.")]
     public AudioClip closeSound;
 
+    // -------------------------------------------------------
+    // VOICE OVER
+    //
+    // The officer's spoken line lives on DialogueLine.voiceClip and is
+    // played through VoiceOverManager, NOT through AudioManager. The
+    // difference matters: VoiceOverManager holds a single AudioSource,
+    // so starting a new line automatically stops the previous one. Two
+    // officer voices can never overlap, no matter how fast the player taps.
+    //
+    // Everything here is optional. An empty voiceClip, or a scene with no
+    // VoiceOverManager, is a silent no-op.
+    // -------------------------------------------------------
+    [Header("Voice Over")]
+    [Tooltip("When ON, the typewriter speed is stretched or compressed so the " +
+             "text finishes just as the officer stops speaking. Turn OFF to " +
+             "always use the fixed typeSpeed below.")]
+    public bool syncTypingToVoice = true;
+
     [Header("Animation")]
     [Tooltip("The object that slides — usually SpeechBubble")]
     public RectTransform slidePanel;
@@ -177,6 +195,10 @@ public class DialogueManager : MonoBehaviour
         // slidePanel still gets the sound.
         AudioManager.Play(closeSound);
 
+        // Cut the officer off as the panel leaves. Without this, a long line
+        // the player skipped through would keep talking over the next scene.
+        StopVoice();
+
         if (slidePanel != null)
         {
             Vector2 start = slidePanel.anchoredPosition;
@@ -206,6 +228,23 @@ public class DialogueManager : MonoBehaviour
         Action cb = onDialogueComplete;
         onDialogueComplete = null;
         cb?.Invoke();
+    }
+
+    // ---------- VOICE OVER ----------
+
+    // Plays this line's voice clip and returns its length in seconds.
+    // Returns 0 when there is nothing to play, which is the signal
+    // TypeLine uses to fall back to the fixed typeSpeed.
+    float PlayVoice(DialogueLine line)
+    {
+        if (VoiceOverManager.Instance == null) return 0f;
+        return VoiceOverManager.Instance.Play(line.voiceClip);
+    }
+
+    void StopVoice()
+    {
+        if (VoiceOverManager.Instance != null)
+            VoiceOverManager.Instance.Stop();
     }
 
     // ---------- DEMO VIDEO ----------
@@ -301,21 +340,41 @@ public class DialogueManager : MonoBehaviour
             nextButtonText.text = "NEXT";
         }
 
+        // Start the voice BEFORE the typing coroutine, so the returned length
+        // is available to pace it. This also stops whatever was playing —
+        // which is exactly what should happen when the player taps NEXT.
+        float voiceLength = PlayVoice(line);
+
         if (typingRoutine != null) StopCoroutine(typingRoutine);
-        typingRoutine = StartCoroutine(TypeLine(line.text));
+        typingRoutine = StartCoroutine(TypeLine(line.text, voiceLength));
     }
 
-    IEnumerator TypeLine(string full)
+    IEnumerator TypeLine(string full, float voiceLength)
     {
         isTyping = true;
         dialogueText.text = full;
         dialogueText.maxVisibleCharacters = 0;
 
         int total = full.Length;
+
+        // Work out how long to wait between characters.
+        //
+        // With no voice clip, use the fixed typeSpeed as before.
+        //
+        // With one, divide the clip length by the character count so the
+        // text lands with the speech instead of racing ahead or lagging
+        // behind. The 0.9 finishes the text a fraction early, which reads
+        // better than text still crawling after the officer has stopped.
+        // Clamped so a mismatched clip can't make the typing unusable.
+        float delay = typeSpeed;
+
+        if (syncTypingToVoice && voiceLength > 0f && total > 0)
+            delay = Mathf.Clamp((voiceLength * 0.9f) / total, 0.005f, 0.12f);
+
         for (int i = 0; i <= total; i++)
         {
             dialogueText.maxVisibleCharacters = i;
-            yield return new WaitForSecondsRealtime(typeSpeed);
+            yield return new WaitForSecondsRealtime(delay);
         }
 
         isTyping = false;
@@ -328,6 +387,10 @@ public class DialogueManager : MonoBehaviour
         dialogueText.maxVisibleCharacters = dialogueText.text.Length;
         isTyping = false;
         typingRoutine = null;
+
+        // The voice deliberately keeps playing here. Skipping the typewriter
+        // means "I can read faster than this", not "stop talking" — and the
+        // next tap will cut the line off anyway.
     }
 
     // ---------- FLOW ----------
@@ -349,6 +412,10 @@ public class DialogueManager : MonoBehaviour
         if (currentIndex < currentLines.Length - 1)
         {
             currentIndex++;
+
+            // ShowLine calls PlayVoice, which stops the current clip before
+            // starting the next one. That is what makes NEXT cut the officer
+            // off cleanly instead of stacking two voices on top of each other.
             ShowLine();
         }
         else

@@ -10,4 +10,7 @@ public class DialogueLine
 
     [Tooltip("Optional — a looping demo clip shown beside the text")]
     public VideoClip demoVideo;  // Leave empty for text-only lines
+
+    [Tooltip("Optional — Angelo's voice-over for this line")]
+    public AudioClip voiceClip;  // Leave empty for silent lines
 }

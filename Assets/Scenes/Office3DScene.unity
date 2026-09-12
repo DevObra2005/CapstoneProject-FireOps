@@ -303,91 +303,111 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PhaseTransitionManager
   useMarkerArrow: 1
   promptLines:
-  - text: "Good work \u2014 you've handled every hazard in this office."
+  - text: Good work! You have handled every hazard in this office.
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
-  - text: But knowing what causes a fire is only half of it. You also need to know
-      what to do when one actually starts.
+    voiceClip: {fileID: 8300000, guid: e75e6d2245c579049b9cc4425fb2898d, type: 3}
+  - text: But knowing what causes a fire is only half the job. You also need to know
+      what to do when a fire starts.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-  - text: Look for the red alarm box on the wall. Go to it.
+    voiceClip: {fileID: 8300000, guid: fcf92af516f33724aad24ea77ce4e6f9, type: 3}
+  - text: Look for the red alarm box on the wall. Go to it!
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: fc6a79e61cf1a4e4bab446eb69902d61, type: 3}
   teachTarget1: {fileID: 1341612794}
   teach1Lines:
-  - text: This is a manual fire alarm pull station.
+  - text: This is a fire alarm. Press it to set it off
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 035a847caa14492498311371b4093496, type: 3}
   - text: If a fire starts, this is the first thing you touch. Before the extinguisher.
       Before anything else.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: "It warns the whole building at once \u2014 not just the people who can
-      see the smoke. Someone two floors up has no idea anything is wrong until this
-      sounds."
+    voiceClip: {fileID: 8300000, guid: 144e40a10321bd64e841d9c3e495096d, type: 3}
+  - text: It warns the whole building at once, not just the people who can see the
+      smoke. Someone on another floor has no idea anything is wrong until this alarm
+      rings.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: Never fight a fire before raising the alarm. If it gets away from you,
-      everyone else needs that head start to get out.
-    characterPose: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: f513548db2a377f4099eca5e5db7a404, type: 3}
+  - text: Never fight a fire before you raise the alarm. If the fire grows too big,
+      everyone else needs extra time to get out safely.
+    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: Remember where this one is. You will need it.
-    characterPose: {fileID: 0}
-    demoVideo: {fileID: 0}
-  - text: "Now \u2014 raising the alarm gets people out. It does not put the fire
-      out. For a small fire, that is your job, and there is one more thing I need
-      to show you."
-    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
-    demoVideo: {fileID: 0}
-  - text: "The fire extinguisher \u2014 right beside you. Tap it, and I will teach
-      you how to operate it properly."
-    characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
-    demoVideo: {fileID: 0}
-  teachTarget2: {fileID: 1187405651}
-  teach2Lines:
-  - text: "This is a fire extinguisher. But here's something most people don't know
-      \u2014 not every extinguisher works on every fire."
+    voiceClip: {fileID: 8300000, guid: b744effd7abe4504fab1a364574beef0, type: 3}
+  - text: Remember where this alarm is. You will need it.
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
-  - text: "In an office, two kinds of fire are most likely. Paper and furniture burning
-      \u2014 that's Class A. And electrical fires from wiring or equipment \u2014
-      that's Class C."
+    voiceClip: {fileID: 8300000, guid: 014b8e0b1cca94f4dac1aa3aa7d977ad, type: 3}
+  - text: Raising the alarm gets people out, but it does not put the fire out. For
+      a small fire, that part is your job. There is one more thing I need to show
+      you.
+    characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
+    demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 2f1429a317a27604b801b4873a6f5cb1, type: 3}
+  - text: The fire extinguisher, right beside you! Tap it, and I will teach you how
+      to use it properly.
+    characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
+    demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: f88843cb84f784c49b0779ed26c57822, type: 3}
+  teachTarget2: {fileID: 1187405651}
+  teach2Lines:
+  - text: This is a fire extinguisher. But here is something most people do not know.
+      Not every extinguisher works on every fire!
+    characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
+    demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 27236f6d2236d564eb7b39800c259283, type: 3}
+  - text: In an office, two kinds of fire are most likely. Paper and furniture burning
+      is called Class A. Electrical fires from wiring or equipment are called Class
+      C.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: That's why offices use an ABC extinguisher, like this one. It handles paper,
-      liquids, and electrical fires all in one.
+    voiceClip: {fileID: 8300000, guid: 0ce089c1f629b684cab8c18875cacada, type: 3}
+  - text: That is why offices use an ABC extinguisher, like this one. It works on
+      paper, liquids, and electrical fires, all in one.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: "Never throw water on an electrical fire. Water carries electricity \u2014
-      it can travel right back to you through the stream."
+    voiceClip: {fileID: 8300000, guid: b1bc8da4dd7b78342ba77d912e56c4e9, type: 3}
+  - text: Never throw water on an electrical fire! Water carries electricity. The
+      current can travel back to you through the water.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 1c24adcd6db7774488a681ac74ec33cf, type: 3}
   - text: Now, how to use it. Remember the word TPASS. Five steps, in order.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: "T \u2014 Twist. Twist the safety pin to break the plastic seal."
+    voiceClip: {fileID: 8300000, guid: 23c4228bf4525a84cb6b6e5cbfc0fb6c, type: 3}
+  - text: T is for Twist. Twist the safety pin to break the plastic seal.
     characterPose: {fileID: 21300000, guid: af31bd5f2944a0a49a02e7aa930fe642, type: 3}
     demoVideo: {fileID: 32900000, guid: 1e78d9f77641a64408f5e6b5239edce5, type: 3}
-  - text: "P \u2014 Pull. Pull the pin straight out. The extinguisher is now ready."
+    voiceClip: {fileID: 8300000, guid: 0324d559d8831ce4692c4dc827794c54, type: 3}
+  - text: P is for Pull. Pull the pin straight out. The extinguisher is now ready.
     characterPose: {fileID: 21300000, guid: af31bd5f2944a0a49a02e7aa930fe642, type: 3}
     demoVideo: {fileID: 32900000, guid: 1e78d9f77641a64408f5e6b5239edce5, type: 3}
-  - text: "A \u2014 Aim. Point the nozzle at the bottom of the fire, not the flames.
-      The fuel is at the base \u2014 that's what you need to put out."
+    voiceClip: {fileID: 8300000, guid: bf812e8fa63a0b247ab51feb14ef42fd, type: 3}
+  - text: A is for Aim. Point the nozzle at the bottom of the fire, not at the flames.
+      The fuel is at the bottom. That is what you need to put out.
     characterPose: {fileID: 21300000, guid: af31bd5f2944a0a49a02e7aa930fe642, type: 3}
     demoVideo: {fileID: 32900000, guid: 1e78d9f77641a64408f5e6b5239edce5, type: 3}
-  - text: "S \u2014 Squeeze. Squeeze the handle to release the spray. Keep a firm
-      grip."
+    voiceClip: {fileID: 8300000, guid: 2f9184bfd4f64dd45b19d4e9d72b9cc6, type: 3}
+  - text: S is for Squeeze. Squeeze the handle to release the spray. Hold it tightly.
     characterPose: {fileID: 21300000, guid: af31bd5f2944a0a49a02e7aa930fe642, type: 3}
     demoVideo: {fileID: 32900000, guid: 1e78d9f77641a64408f5e6b5239edce5, type: 3}
-  - text: "S \u2014 Sweep. Move the nozzle side to side across the base until the
-      fire is out."
+    voiceClip: {fileID: 8300000, guid: 6d94ed35268c7b548a037c26f072fd5f, type: 3}
+  - text: S is for Sweep. Move the nozzle side to side across the bottom of the fire,
+      until the fire is out.
     characterPose: {fileID: 21300000, guid: af31bd5f2944a0a49a02e7aa930fe642, type: 3}
     demoVideo: {fileID: 32900000, guid: 1e78d9f77641a64408f5e6b5239edce5, type: 3}
-  - text: "You've completed the learning module. What comes next is a real \r\nscenario
-      \u2014 timed, and without guidance. Everything you need, you \r\nalready know.
-      Ready?"
+    voiceClip: {fileID: 8300000, guid: c769e64841a6a5248945c15efdb39db9, type: 3}
+  - text: You have completed the lesson! What comes next is a real scenario. It is
+      timed, and there will be no guidance. Everything you need, you already know.
+      Are you ready?
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 65ac3276452329b41a0ac82e3d7dce16, type: 3}
   confirmPanel: {fileID: 680703511}
   confirmSound: {fileID: 8300000, guid: 07f60ad27ae4e774092bc8c7a2e5b9b3, type: 3}
   loadingTagline: PREPARING SIMULATION
@@ -3555,6 +3575,63 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 207594632}
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1001 &221134479
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 2.34148
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.02323
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6075923213767641157, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9142120552172462982, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
+      propertyPath: m_Name
+      value: SettingsManager
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 28631c1ce068d5c468cc57fa4a048241, type: 3}
 --- !u!1 &224335950
 GameObject:
   m_ObjectHideFlags: 0
@@ -29758,6 +29835,7 @@ MonoBehaviour:
   popupSound: {fileID: 8300000, guid: f1bf84b9782f5cb40838467e46cc5815, type: 3}
   tapSound: {fileID: 8300000, guid: 5bb3ea4559ba4e343af5b0c58d218246, type: 3}
   closeSound: {fileID: 8300000, guid: 1a8bf7156669f8d42a45c24c3370d293, type: 3}
+  syncTypingToVoice: 1
   slidePanel: {fileID: 1693831600}
   slideDistance: 400
   slideDuration: 0.4
@@ -32710,18 +32788,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Phase2Briefing
   briefingLines:
-  - text: "This is the simulation. Everything I taught you, you use now. Look \u2014
-      there is a fire."
+  - text: This is the simulation. Everything I taught you, you use now. Look! There
+      is a fire.
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
-  - text: That is what octopus wiring becomes when nobody acts on it. Overheated
-      cords, then flames.
+    voiceClip: {fileID: 8300000, guid: 34adcd18288d4ad40910ff447f7e12ce, type: 3}
+  - text: Both hazards you found have now started a fire. The overloaded wiring overheated,
+      and the device left running caught fire. This is what happens when nobody acts
+      on them.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: Show me the proper way to use the extinguisher, exactly as I taught you.
-      Put the fire out, then get to the door. Ninety seconds, starting now.
+    voiceClip: {fileID: 8300000, guid: 041fd6e43b5a2174abdfbd560dcf93b3, type: 3}
+  - text: There is more than one fire. You must decide how to get out of this office.
+      Use the extinguisher exactly as I taught you, then go to the door. Ninety seconds,
+      starting now!
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 45ce65e6a9889764abc34bbc27e086ad, type: 3}
   startDelay: 1
 --- !u!1 &1465772148
 GameObject:
@@ -40274,35 +40357,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HazardDialogue
   hazardName: Devices Left ON
   lines:
-  - text: "Look at this \u2014 computers and equipment left running with nobody around."
+  - text: Look at this! Computers and equipment left running, with nobody around.
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
-  - text: Electronics still draw power when idle, and they keep generating heat with
-      no one there to notice.
+    voiceClip: {fileID: 8300000, guid: 1fa0cafe3d4bd0749a52a008b7d29a05, type: 3}
+  - text: Electronics still use electricity even when nobody is using them. They
+      keep making heat, and no one is there to notice.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: "Overnight, a faulty charger or worn cable can overheat for hours before
-      anyone finds out. Many office fires start exactly this way \u2014 after everyone
-      has gone home."
+    voiceClip: {fileID: 8300000, guid: 151c0c000a255184497d7bd53e834182, type: 3}
+  - text: Overnight, a broken charger or damaged cable can overheat for hours. Nobody
+      is there to see it. Many office fires start exactly like this, after everyone
+      has gone home.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: A device that's switched off can't overheat. That's why the last person
-      out matters so much.
+    voiceClip: {fileID: 8300000, guid: 619a47c807ce04b4b98c896d4761ce6c, type: 3}
+  - text: A device that is switched off cannot overheat. That is why the person who
+      leaves last must check everything.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: 'Safety action: Practice checking all devices before leaving the office.
-      Switch them off at the source. Tap the power button to turn this one off.'
+    voiceClip: {fileID: 8300000, guid: 596a5d432acc8a549ae8ce63237c3ff7, type: 3}
+  - text: Safety action! Always check every device before you leave the office. Switch
+      them off completely. Tap the power button to turn this one off.
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 848aea28448858f43a6f3952f1981e84, type: 3}
   completionLines:
-  - text: Well done. Everything's powered down properly.
+  - text: Well done! Everything is powered down properly.
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
-  - text: 'Powered down safely. That''s how every workstation should be left.
-
-'
+    voiceClip: {fileID: 8300000, guid: cc14163020695864da7708f5ebc3f3eb, type: 3}
+  - text: Powered down safely! That is how every workstation should be left.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 10e662e8afcb7214f9d9140eeeb5bc98, type: 3}
   actionTarget: {fileID: 1627924066}
   isComplete: 0
 --- !u!114 &1885261936
@@ -41280,38 +41368,42 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HazardDialogue
   hazardName: Octopus Wiring
   lines:
-  - text: "That's octopus wiring \u2014 one outlet with too many devices plugged
-      into it."
+  - text: That's octopus wiring! One outlet, too many devices plugged in.
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
-  - text: Every outlet can only carry so much power. Plug in too much, and the wires
-      start to heat up.
+    voiceClip: {fileID: 8300000, guid: d92292cb3393fef4e94ab9c5373a8e56, type: 3}
+  - text: Every outlet can only handle so much power. Plug in too many devices, and
+      the wires start to heat up.
     characterPose: {fileID: 21300000, guid: 1df00db9a1101574d87e2b5df19761c5, type: 3}
     demoVideo: {fileID: 0}
-  - text: 'The heat builds slowly. Insulation melts, and a fire can start inside
-      the wall where nobody notices until it spreads. '
+    voiceClip: {fileID: 8300000, guid: 1e06ab85c08e90e419fdc0315b041897, type: 3}
+  - text: 'The heat builds up slowly. The plastic covering on the wire melts. A fire
+      can start inside the wall, where nobody sees it until it spreads. '
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: "Chaining extension cords together doesn't help \u2014 it just hides the
-      problem. The load is still there, and every extra connection adds more heat"
+    voiceClip: {fileID: 8300000, guid: fbc0cd7254f830d4585855b163786179, type: 3}
+  - text: Adding more extension cords will not help. The same power still flows through.
+      Every extra connection only adds more heat.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: ' Report the unsafe wiring. Never fix it yourself,
-
-      A licensed electrician
-      should handle it. Head to the phone and report this hazard.'
+    voiceClip: {fileID: 8300000, guid: 5580b33ad993c6a49b724fdbf05b0f86, type: 3}
+  - text: Report the unsafe wiring. Never fix it yourself! Only a trained electrician
+      should touch it. Go to the phone and report this hazard.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: 31c171dad2f5fd0468e92c6b88bd2b02, type: 3}
   completionLines:
-  - text: Good work. Maintenance has been notified, and an electrician will inspect
+  - text: Good work! You reported it. Maintenance will send an electrician to check
       the wiring.
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
-  - text: 'Reported and handled. That wiring won''t be a risk now.
+    voiceClip: {fileID: 8300000, guid: a5f1b8273697bfe4e9e3d92e31d7ebbd, type: 3}
+  - text: 'Reported and handled! That wiring is not a danger anymore.
 
 '
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: e27ec6d87a20a39448c3891bf2d7c1e8, type: 3}
   actionTarget: {fileID: 1484616460}
   isComplete: 0
 --- !u!65 &1937158397
@@ -41863,18 +41955,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Phase1Brifier
   briefingLines:
-  - text: Good day. I am an officer of the Bureau of Fire Protection, Natividad Station.
-      Today we will cover how to identify fire hazards before they cause harm.
+  - text: Good day! I am an officer of the Bureau of Fire Protection, Natividad Station.
+      Today, we will learn how to find fire hazards before they cause harm.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-  - text: This office has two of common hazards Look around, and tap anything you
-      think is a risk.
+    voiceClip: {fileID: 8300000, guid: a5fce3f411c0039438f2aa59935c7817, type: 3}
+  - text: This room has two common hazards. Look around, and tap anything you think
+      is a risk.
     characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
     demoVideo: {fileID: 0}
-  - text: When you find one, I will explain what it is and what to do about it. Take
-      your time.
+    voiceClip: {fileID: 8300000, guid: 3d23e86b15ddc0b4bb6cd6953a2cc8cf, type: 3}
+  - text: When you find one, I will explain what it is, and what to do about it.
+      Take your time.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
+    voiceClip: {fileID: 8300000, guid: f4aff4f290d6f614587ab3c6c274886e, type: 3}
   startDelay: 1
 --- !u!1 &1974291071
 GameObject:
@@ -48385,3 +48480,4 @@ SceneRoots:
   - {fileID: 408261392}
   - {fileID: 1460130189}
   - {fileID: 7212645258356706550}
+  - {fileID: 221134479}
