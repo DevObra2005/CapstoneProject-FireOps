@@ -9,9 +9,16 @@
 [Mm]emoryCaptures/
 Assets/_Recovery/
 
-# Build output folders (yours specifically)
-BuildCapstoneProject_BackUpThisFolder_ButDontShipItWithYourGame/
-Capstone Project_BurstDebugInformation_DoNotShip/
+# Build output folders (any build name)
+*_BackUpThisFolder_ButDontShipItWithYourGame/
+*_BurstDebugInformation_DoNotShip/
+
+# Unity build cache
+.utmp/
+
+# Temporary files Unity creates during a build and deletes after
+Assets/Resources/PerformanceTestRun*.json
+Assets/Resources/PerformanceTestRun*.json.meta
 
 # VS/Editor files
 .vs/
@@ -31,4 +38,3 @@ Capstone Project_BurstDebugInformation_DoNotShip/
 # OS files
 .DS_Store
 Thumbs.db
-.utmp/
