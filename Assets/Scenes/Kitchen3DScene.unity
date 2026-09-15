@@ -20221,7 +20221,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u25CF Identify the fire hazards in the office.\r\n\u25CB Click or tap
+  m_text: "\u25CF Identify the fire hazards in the kitchen.\r\n\u25CB Click or tap
     each hazard found."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 66ced1d7bec367941bb4df5b2af92931, type: 2}
