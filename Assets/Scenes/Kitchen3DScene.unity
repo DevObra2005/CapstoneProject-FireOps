@@ -1630,7 +1630,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 2
+  m_fontStyle: 0
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -12469,13 +12469,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.9232209, z: -0, w: 0.3842697}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -4.351, y: 1.567, z: 4.171}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 134.803, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14073,7 +14073,7 @@ MonoBehaviour:
   demoVideoPlayer: {fileID: 1300151701}
   dialogueTextRect: {fileID: 131868411}
   textRightNormal: 30
-  textRightWithVideo: 230
+  textRightWithVideo: 200
   popupSound: {fileID: 8300000, guid: f1bf84b9782f5cb40838467e46cc5815, type: 3}
   tapSound: {fileID: 8300000, guid: 5bb3ea4559ba4e343af5b0c58d218246, type: 3}
   closeSound: {fileID: 8300000, guid: 1a8bf7156669f8d42a45c24c3370d293, type: 3}
@@ -14145,27 +14145,27 @@ MonoBehaviour:
     voiceClip: {fileID: 8300000, guid: c454997e864e6da4db8b1c4f08b48942, type: 3}
   - text: First, wet the towel. Then squeeze the water out. A dripping towel splashes,
       and the steam will burn your hands.
-    characterPose: {fileID: 0}
-    demoVideo: {fileID: 0}
+    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
+    demoVideo: {fileID: 32900000, guid: e03c29fdcd541374198c55c9e578d845, type: 3}
     voiceClip: {fileID: 8300000, guid: 6ac1d726e4baf0141b7ade65eb55d5b0, type: 3}
   - text: Second, lay it over the flame. Lay it down, never throw it! A thrown towel
       can miss, or push air into the fire and make it worse.
-    characterPose: {fileID: 0}
-    demoVideo: {fileID: 0}
+    characterPose: {fileID: 21300000, guid: 6dabcd07478f38b4384467fb682f154c, type: 3}
+    demoVideo: {fileID: 32900000, guid: 296a81266c88c9a4589bea04d5add11d, type: 3}
     voiceClip: {fileID: 8300000, guid: 59138de27a352d84fa7c72c8dc9ebd3b, type: 3}
   - text: Third, close the regulator valve. The towel stops the flame, but only closing
       the gas stops the fire from coming back.
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
-    demoVideo: {fileID: 0}
+    demoVideo: {fileID: 32900000, guid: 9542389d28291264c899bf78745add03, type: 3}
     voiceClip: {fileID: 8300000, guid: 39b3bb8e10ef0ae4daf2024d8767eca8, type: 3}
   - text: Last, leave the room. Even with the fire out, gas can still be in the air.
       Get out, and call the fire department.
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
     voiceClip: {fileID: 8300000, guid: 43c8af6d83ae02b49b8b6d9f73342bc5, type: 3}
-  - text: '|You have completed the lesson! What comes next is a real scenario. It
-      is timed, and there will be no guidance. Everything you need, you already know.
-      Are you ready?'
+  - text: You have completed the lesson! What comes next is a real scenario. It is
+      timed, and there will be no guidance. Everything you need, you already know.
+      Are you ready?
     characterPose: {fileID: 21300000, guid: dc86be78c176b7249911c3e5eec98bf6, type: 3}
     demoVideo: {fileID: 0}
     voiceClip: {fileID: 8300000, guid: 235184ea13b137842aed2ab3c4575f3f, type: 3}
@@ -14229,7 +14229,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 160, y: 20}
-  m_SizeDelta: {x: 200, y: 120}
+  m_SizeDelta: {x: 170, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!328 &1300151701
 VideoPlayer:
@@ -22221,19 +22221,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.016464788
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.9998645
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -22241,7 +22241,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -178.113
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2224247161270233714, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -22257,23 +22257,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.07114167
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.9974662
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5758547951378778070, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -188.159
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7678627074513883840, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: maxRayDistance
@@ -22285,6 +22285,18 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8099014300572872465, guid: 813094771524329438eb157cf1143aae, type: 3}
       propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8244350245710284039, guid: 813094771524329438eb157cf1143aae, type: 3}
+      propertyPath: field of view
+      value: 60.000004
+      objectReference: {fileID: 0}
+    - target: {fileID: 8244350245710284039, guid: 813094771524329438eb157cf1143aae, type: 3}
+      propertyPath: m_FocalLength
+      value: 20.78461
+      objectReference: {fileID: 0}
+    - target: {fileID: 8244350245710284039, guid: 813094771524329438eb157cf1143aae, type: 3}
+      propertyPath: m_projectionMatrixMode
       value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
