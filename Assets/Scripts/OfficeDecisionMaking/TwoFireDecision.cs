@@ -71,6 +71,22 @@ using UnityEngine;
 //   3. stepResults. chosen_action names which fire they attacked, so the
 //      decision appears in the Simulation Analysis report with NO backend
 //      change at all.
+//
+// -------------------------------------------------------
+// STEP FEEDBACK (glow, sound, vibration) — THIS FILE OWNS SQUEEZE'S COLOUR
+//
+// The Squeeze tap is judged twice: TPASSButtonManager decides it is the
+// right STEP, and GradeChoice below decides whether it is the right FIRE.
+// Only the second answer tells the player whether they are about to win or
+// lose. So in Office, TPASSButtonManager skips its green for Squeeze (its
+// Two Fire Decision slot is filled), and GradeChoice flashes instead:
+//
+//   exit fire -> StepFeedback.Correct()  green + chime
+//   far fire  -> StepFeedback.Wrong()    red + error sound + heavy buzz
+//
+// Without this, a player attacking the wrong fire would see a green
+// "correct" glow seconds before losing — a mixed signal at the most
+// important teaching moment in the scenario.
 // -------------------------------------------------------
 
 public class TwoFireDecision : MonoBehaviour
@@ -332,6 +348,8 @@ public class TwoFireDecision : MonoBehaviour
 
         // Amber, not red. No time is being taken here — this is information
         // about the room, not a mark against the player.
+        // (No StepFeedback here for the same reason: the glow is only for
+        // the player's own actions.)
         if (ActionFeedbackManager.Instance != null)
         {
             ActionFeedbackManager.Instance.ShowHint(
@@ -474,7 +492,10 @@ public class TwoFireDecision : MonoBehaviour
     //
     // Correct choice records nothing extra — the green CORRECT row for the
     // Squeeze step has already appeared, and a second row saying the same
-    // thing would dilute it.
+    // thing would dilute it. It DOES flash green, because TPASSButtonManager
+    // held its own green back for this tap (see header).
+    //
+    // Runs once per run (decisionRecorded), so each choice flashes once.
     // -------------------------------------------------------
     private void GradeChoice(string stepName)
     {
@@ -484,6 +505,9 @@ public class TwoFireDecision : MonoBehaviour
         {
             if (verboseLogging)
                 Debug.Log("[TwoFireDecision] CORRECT — cleared the exit fire first.");
+
+            // NEW: right fire — green glow + chime.
+            StepFeedback.Correct();
             return;
         }
 
@@ -506,6 +530,11 @@ public class TwoFireDecision : MonoBehaviour
             penalty,
             tip,
             showTipDirectly: true);
+
+        // NEW: wrong fire — red glow + error sound + heavy buzz.
+        // After RegisterWrongAction, so the penalty is recorded first,
+        // matching the button managers.
+        StepFeedback.Wrong();
     }
 
     // -------------------------------------------------------

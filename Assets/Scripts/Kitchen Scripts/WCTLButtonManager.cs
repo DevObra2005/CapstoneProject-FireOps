@@ -47,6 +47,11 @@ using UnityEngine.UI;
 //   in this scenario, so it is charged at full penalty like any other wrong
 //   action. Different category, different cost.
 //
+// * STEP FEEDBACK (glow, sound, vibration) follows the same rule:
+//   red for anything that costs points (wrong step AND dry towel), green
+//   for a correct step, nothing for still-animating taps or position
+//   hints. See the matching note in TPASSButtonManager.
+//
 // -------------------------------------------------------
 // STEP NUMBERS - READ THIS BEFORE CHANGING showFromStep
 //
@@ -287,6 +292,7 @@ public class WCTLButtonManager : MonoBehaviour
         //
         // Deliberately silent - the lock lasts under a second, and a feedback
         // row for every impatient tap would be noisier than the problem.
+        // No StepFeedback here either, for the same reason.
         if (SimulationManager.Instance.IsStepBusy)
         {
             Debug.Log($"[WCTL] {tapped.step} ignored - previous step still animating.");
@@ -307,6 +313,9 @@ public class WCTLButtonManager : MonoBehaviour
                 timePenalty,
                 tapped.wrongTip
             );
+
+            // NEW: red glow + error sound + heavy buzz.
+            StepFeedback.Wrong();
             return;
         }
 
@@ -324,6 +333,9 @@ public class WCTLButtonManager : MonoBehaviour
                 timePenalty,
                 dryTowelTip
             );
+
+            // NEW: this costs full penalty, so it gets the full red feedback.
+            StepFeedback.Wrong();
             return;
         }
 
@@ -331,6 +343,8 @@ public class WCTLButtonManager : MonoBehaviour
         // Checked BEFORE the step is registered, so a blocked tap changes
         // nothing at all - no time lost, no step advanced, button still
         // enabled to retry.
+        //
+        // No StepFeedback: this costs no time, so it gets the hint row only.
         string positionHint = CheckPosition(tapped);
         if (positionHint != null)
         {
@@ -349,7 +363,10 @@ public class WCTLButtonManager : MonoBehaviour
             tapped.step.ToString(),
             tapped.step.ToString());
 
-        tapped.button.interactable = false;   // grey out this one
+        tapped.button.interactable = false;   // grey out this one (turns green)
+
+        // NEW: green glow + chime, at the same moment the tile turns green.
+        StepFeedback.Correct();
     }
 
     // -------------------------------------------------------

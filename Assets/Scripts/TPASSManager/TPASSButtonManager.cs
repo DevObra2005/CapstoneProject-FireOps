@@ -80,6 +80,23 @@ using UnityEngine.UI;
 //
 // Second Fire Target is OPTIONAL. Leave it EMPTY in Classroom and the
 // check behaves exactly as it always has, measuring the one fire.
+//
+// STEP FEEDBACK (glow, sound, vibration):
+// The WRONG STEP branch calls StepFeedback.Wrong() and the CORRECT
+// branch calls StepFeedback.Correct(). Those are the only two places.
+//   * Still-animating taps stay SILENT - the player is early, not wrong.
+//   * Position hints get NO glow - they cost no time, and red is kept
+//     for mistakes that cost points, so the colour always matches the
+//     score.
+//   * SQUEEZE IN OFFICE is the exception. That one tap is judged twice:
+//     here (is Squeeze the right step?) and by TwoFireDecision (is that
+//     the right fire?). Only the second answer tells the player whether
+//     they are about to win or lose, so TwoFireDecision owns the colour
+//     for that tap and this script stays quiet. Assign Two Fire Decision
+//     below in Office only; leave it EMPTY in Classroom, where Squeeze
+//     flashes green as normal.
+// Both calls are static and do nothing when the scene has no
+// StepFeedback, so Classroom is safe before it is set up there.
 // -------------------------------------------------------
 
 public class TPASSButtonManager : MonoBehaviour
@@ -162,6 +179,17 @@ public class TPASSButtonManager : MonoBehaviour
     [SerializeField] private string notFacingHint = "Face the fire before you spray";
     // -------------------------------------------------------
 
+    [Header("Step Feedback")]
+    [Tooltip("OFFICE ONLY — drag in the same TwoFireDecision that is assigned " +
+             "on SimulationManager. Leave EMPTY in Classroom.\n\n" +
+             "When filled, the Squeeze tap does NOT flash green here. " +
+             "TwoFireDecision flashes instead: green for the exit fire, red " +
+             "for the far fire. Without this, a player attacking the wrong " +
+             "fire would see green right before losing the run.\n\n" +
+             "Must match SimulationManager: filled here but empty there " +
+             "means Squeeze gets no glow at all.")]
+    [SerializeField] private TwoFireDecision twoFireDecision;
+
     private CanvasGroup canvasGroup;
     private bool wasVisible = false;
 
@@ -238,6 +266,7 @@ public class TPASSButtonManager : MonoBehaviour
         // clock in half a second.
         //
         // Deliberately silent - the lock lasts under a second.
+        // No StepFeedback here either, for the same reason.
         if (SimulationManager.Instance.IsStepBusy)
         {
             Debug.Log($"[TPASS] {tapped.step} ignored - previous step still animating.");
@@ -259,6 +288,11 @@ public class TPASSButtonManager : MonoBehaviour
                 timePenalty,
                 tapped.wrongTip
             );
+
+            // NEW: red glow + error sound + heavy buzz.
+            // After RegisterWrongAction, so the penalty is recorded first
+            // and the feedback only describes what already happened.
+            StepFeedback.Wrong();
             return;
         }
 
@@ -266,6 +300,8 @@ public class TPASSButtonManager : MonoBehaviour
         // Only Squeeze cares where the player is standing. Checked BEFORE
         // the step is registered, so a blocked tap changes nothing at all -
         // no time lost, no step advanced, button still enabled to retry.
+        //
+        // No StepFeedback: this costs no time, so it gets the hint row only.
         if (tapped.step == SimulationInteractable.SimStep.TPASS_Squeeze)
         {
             string positionHint = CheckFirePosition();
@@ -299,7 +335,17 @@ public class TPASSButtonManager : MonoBehaviour
 
         SimulationManager.Instance.RegisterCorrectAction(tapped.step, tapped.step.ToString());
 
-        tapped.button.interactable = false;   // grey out this one
+        tapped.button.interactable = false;   // grey out this one (turns green)
+
+        // NEW: green glow + chime, at the same moment the tile turns green.
+        // EXCEPT Squeeze in Office: TwoFireDecision judges the fire on this
+        // same tap and flashes green or red itself (see header).
+        bool fireDecisionOwnsFeedback =
+            twoFireDecision != null &&
+            tapped.step == SimulationInteractable.SimStep.TPASS_Squeeze;
+
+        if (!fireDecisionOwnsFeedback)
+            StepFeedback.Correct();
     }
 
     // -------------------------------------------------------
