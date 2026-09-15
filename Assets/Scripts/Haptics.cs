@@ -2,33 +2,40 @@
 
 // -------------------------------------------------------
 // WHAT THIS DOES:
-// Short, precise vibration on Android.
+// Short, controllable vibration on Android.
 //
 // WHY NOT Handheld.Vibrate():
-// Unity's built-in call is a single fixed 500ms full-strength buzz.
-// That is roughly ten times too long for a tap. On a phone it reads as
-// "something went wrong", not "you pressed a thing". There is no way to
-// shorten it and no way to soften it.
-//
+// Unity's built-in call is a single fixed ~500ms full-strength buzz.
+// Far too long for tap feedback, and there is no way to shorten it.
 // So this talks to Android's real Vibrator service directly, which lets
 // us set BOTH duration and strength:
 //
-//   Light  — 12ms, soft   → reticle locks onto something
-//   Medium — 20ms, firm   → a successful tap
-//   Heavy  — 35ms, strong → a wrong action
+//   Light  — 20ms, soft   → reticle locks onto something
+//   Medium — 35ms, firm   → a successful tap
+//   Heavy  — 65ms, strong → a wrong action
+//
+// WHY THESE LENGTHS:
+// The first version used 12 / 20 / 35 ms. On the test phone the 35ms
+// wrong-action buzz was too weak to notice. Many phones use a small
+// spinning-weight motor that needs roughly 50-80ms to spin up, so very
+// short pulses end before they can be felt. 65ms at full strength is
+// clearly felt while still reading as a quick "bzt", not an alarm.
+// To tune, change the numbers in the three methods below (keep Heavy
+// under ~100ms or it starts to feel like a notification).
+//
+// WHY THERE IS A Handheld.Vibrate() REFERENCE WE NEVER CALL:
+// Unity scans scripts at build time. If it finds Handheld.Vibrate
+// anywhere, it adds the VIBRATE permission to the APK automatically,
+// so the permission can never go missing even if the custom manifest
+// changes. EnsurePermissionIsAdded() is never called — do not delete it
+// as "unused code".
 //
 // HOW IT DEGRADES:
 //   Editor / PC     → does nothing, silently. Safe to call anywhere.
 //   Android 8+      → duration AND amplitude (the good path)
-//   Android 7 and   → duration only, full strength. Still much better
-//   older              than a 500ms buzz.
+//   Android 7 and   → duration only, full strength.
+//   older
 //   No vibrator     → does nothing.
-//
-// PERMISSION REQUIRED:
-// Because this does not use Handheld.Vibrate(), Unity does not know to
-// add the VIBRATE permission for you. You must add it by hand — see the
-// setup steps. Without it, this fails silently on device and you will
-// think the code is broken when it is only unpermitted.
 // -------------------------------------------------------
 
 public static class Haptics
@@ -44,10 +51,22 @@ public static class Haptics
 
     // -------------------------------------------------------
     // THE THREE YOU WILL ACTUALLY CALL
+    // (duration in ms, strength 1-255)
     // -------------------------------------------------------
-    public static void Light() { Vibrate(12, 60); }
-    public static void Medium() { Vibrate(20, 130); }
-    public static void Heavy() { Vibrate(35, 210); }
+    public static void Light() { Vibrate(20, 90); }
+    public static void Medium() { Vibrate(35, 160); }
+    public static void Heavy() { Vibrate(65, 255); }
+
+    // -------------------------------------------------------
+    // NEVER CALLED. Its only job is to contain Handheld.Vibrate so
+    // Unity adds the VIBRATE permission at build time. See the header.
+    // -------------------------------------------------------
+#if UNITY_ANDROID
+    private static void EnsurePermissionIsAdded()
+    {
+        Handheld.Vibrate();
+    }
+#endif
 
 #if UNITY_ANDROID && !UNITY_EDITOR
     private static AndroidJavaObject vibrator;
@@ -88,7 +107,8 @@ public static class Haptics
 #endif
 
     /// <summary>
-    /// duration in milliseconds, amplitude 1-255 (ignored below Android 8).
+    /// duration in milliseconds, amplitude 1-255 (ignored below Android 8
+    /// and on phones without amplitude control).
     /// </summary>
     public static void Vibrate(long milliseconds, int amplitude)
     {
