@@ -79,6 +79,44 @@ using UnityEngine;
 // player who correctly cleared the doorway fire would be refused at the
 // door for two seconds with the fire visibly out - which reads as a bug,
 // and is exactly the kind of thing that gets found during a defense demo.
+//
+// -------------------------------------------------------
+// TWO ADDITIONS FOR THE EXTINGUISH AFTERMATH.
+//
+//   1. THE LIGHTS NOW FADE WITH THE FLAMES.
+//      Every child Light is found at Start the same way the particle
+//      systems are, and scaled by the SAME targetFraction. Before this,
+//      the fire's glow stayed at full brightness through the whole fade
+//      and then vanished when the object hid itself - so a room that
+//      should have been getting darker stayed lit, then snapped dark a
+//      second later. That snap was the harshest moment in the sequence.
+//
+//      It rides on the existing lerp rather than a second coroutine, so a
+//      weaken dims the room partway, a death takes it to black, and a
+//      GROW brightens it - all for free, because they all share the same
+//      fraction.
+//
+//      Finds nothing if the fire's "Lights" child turns out to be glow
+//      SPRITES rather than real Light components. In that case they are
+//      already being dimmed as particle systems and this quietly does
+//      nothing - which is why there is no warning here.
+//
+//   2. THE AFTERMATH IS TOLD WHEN THE FIRE STARTS DYING.
+//      extinguishEffects points at a SIBLING object holding the smoke.
+//      It cannot be a child: this object hides itself hideDelay seconds
+//      after the flames die, and would take the smoke with it mid-cloud.
+//
+//      PlayOut is called at the TOP of ExtinguishFire, not from the
+//      onFireOut callback, because the smoke has to build WHILE the
+//      flames are still shrinking. Called from the callback it would only
+//      appear once the fire was already gone, and would read as a
+//      separate effect switching on.
+//
+//      dieDuration is passed in rather than stored over there, so the
+//      fade length keeps exactly one owner - the same rule as the
+//      callbacks above.
+//
+//      Null-guarded. Kitchen leaves it empty and behaves as before.
 // -------------------------------------------------------
 
 public class FireController : MonoBehaviour
@@ -122,6 +160,24 @@ public class FireController : MonoBehaviour
              "Use IsOut instead.")]
     [SerializeField] private float hideDelay = 2f;
 
+    [Header("Aftermath")]
+    [Tooltip("Drag this fire's FireAftermath object here — the SIBLING " +
+             "holding the smoke, not a child of this fire.\n\n" +
+             "A child would be hidden along with this object Hide Delay " +
+             "seconds after the flames die, cutting the smoke off mid-cloud.\n\n" +
+             "LEAVE EMPTY IN KITCHEN. Kitchen is WCTL — a wet towel " +
+             "smothering an LPG fire — so dry chemical aftermath would be " +
+             "the wrong protocol. Empty means nothing plays, with no error.")]
+    [SerializeField] private FireExtinguishEffects extinguishEffects;
+
+    [Range(0f, 1f)]
+    [Tooltip("How much the fire's light flickers as it dies. 0 turns the " +
+             "flicker off and leaves a straight fade.\n\n" +
+             "Only applies to the death fade. A weaken or a grow moves the " +
+             "light smoothly, because a fire that is still burning should " +
+             "not stutter.")]
+    [SerializeField] private float deathFlickerStrength = 0.5f;
+
     // -------------------------------------------------------
     // All the particle systems that make up this fire (found at Start).
     // We remember each one's ORIGINAL emission rate and start size so we can
@@ -130,6 +186,17 @@ public class FireController : MonoBehaviour
     private ParticleSystem[] allSystems;
     private float[] originalEmission;
     private float[] originalStartSize;
+
+    // Same idea for the fire's glow. Empty on fires whose "Lights" child is
+    // made of glow sprites rather than real Light components.
+    private Light[] allLights;
+    private float[] originalIntensity;
+
+    // How far into the death fade the flicker starts, and how fast it
+    // wobbles. Not Inspector fields: they are the SHAPE of the flicker, and
+    // deathFlickerStrength above is the one dial worth turning.
+    private const float FlickerStartsAt = 0.55f;
+    private const float FlickerSpeed = 14f;
 
     // TRUE from the moment the death fade FINISHES — not when Sweep was
     // tapped, and not when the object is hidden. See the header note.
@@ -164,6 +231,14 @@ public class FireController : MonoBehaviour
             originalStartSize[i] = main.startSize.constant;
         }
 
+        // Same again for the glow. Inactive ones are included, so a light
+        // switched on later still gets restored to the right brightness.
+        allLights = GetComponentsInChildren<Light>(true);
+        originalIntensity = new float[allLights.Length];
+
+        for (int i = 0; i < allLights.Length; i++)
+            originalIntensity[i] = allLights[i].intensity;
+
         isOut = false;
     }
 
@@ -193,6 +268,15 @@ public class FireController : MonoBehaviour
     public void ExtinguishFire(Action onFireOut = null)
     {
         StopAllCoroutines();
+
+        // Told NOW, at the start of the fade, not when it finishes. The
+        // aftermath works out its own delay from dieDuration so the smoke
+        // builds while the flames are still visibly dying.
+        //
+        // Runs on a sibling object, so nothing here can cancel it - this
+        // StopAllCoroutines only reaches coroutines on THIS component.
+        if (extinguishEffects != null) extinguishEffects.PlayOut(dieDuration);
+
         StartCoroutine(ScaleFireRoutine(0f, dieDuration, true, onFireOut));
         Debug.Log("[FireController] Fire extinguished (sweep).");
     }
@@ -273,6 +357,20 @@ public class FireController : MonoBehaviour
             allSystems[i].Play();
         }
 
+        // The glow was faded to zero along with the flames, so it needs
+        // putting back too - otherwise the restarted fire burns in the dark.
+        if (allLights != null)
+        {
+            for (int i = 0; i < allLights.Length; i++)
+            {
+                if (allLights[i] == null) continue;
+                allLights[i].intensity = originalIntensity[i];
+            }
+        }
+
+        // Clear any smoke still hanging in the air from the previous attempt.
+        if (extinguishEffects != null) extinguishEffects.ResetForReplay();
+
         // Burning again, so the exit is blocked again.
         isOut = false;
 
@@ -285,6 +383,10 @@ public class FireController : MonoBehaviour
     //   targetFraction 0.5 = half strength (weaken)
     //   targetFraction 0   = fully out (die)
     //   targetFraction 1.6 = 60% larger than it started (spread)
+    //
+    // The fire's Lights ride the same fraction, so the room brightens and
+    // darkens with the flames instead of holding full brightness until the
+    // object disappears.
     // -------------------------------------------------------
     private IEnumerator ScaleFireRoutine(
         float targetFraction,
@@ -302,6 +404,12 @@ public class FireController : MonoBehaviour
             startEmission[i] = allSystems[i].emission.rateOverTime.constant;
             startSize[i] = allSystems[i].main.startSize.constant;
         }
+
+        // Same snapshot for the glow, for the same reason.
+        float[] startIntensity = new float[allLights.Length];
+
+        for (int i = 0; i < allLights.Length; i++)
+            startIntensity[i] = allLights[i] != null ? allLights[i].intensity : 0f;
 
         float elapsed = 0f;
         while (elapsed < duration)
@@ -327,6 +435,26 @@ public class FireController : MonoBehaviour
                 main.startSize = newSize;
             }
 
+            for (int i = 0; i < allLights.Length; i++)
+            {
+                if (allLights[i] == null) continue;
+
+                float targetIntensity = originalIntensity[i] * targetFraction;
+                float newIntensity = Mathf.Lerp(startIntensity[i], targetIntensity, eased);
+
+                // Guttering, only in the back half of a DEATH. Perlin rather
+                // than Random so it wobbles instead of strobing, and offset
+                // per light so two lights on the same fire do not pulse in
+                // lockstep.
+                if (isDeath && deathFlickerStrength > 0f && t > FlickerStartsAt)
+                {
+                    float noise = Mathf.PerlinNoise(Time.time * FlickerSpeed, i * 7.13f);
+                    newIntensity *= Mathf.Lerp(1f, noise, deathFlickerStrength);
+                }
+
+                allLights[i].intensity = newIntensity;
+            }
+
             yield return null;
         }
 
@@ -335,6 +463,15 @@ public class FireController : MonoBehaviour
         {
             foreach (var ps in allSystems)
                 ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+
+            // The flicker above multiplies the intensity every frame, so the
+            // loop can exit on a frame that left a little light behind.
+            // Zero them explicitly rather than trusting the last frame.
+            for (int i = 0; i < allLights.Length; i++)
+            {
+                if (allLights[i] == null) continue;
+                allLights[i].intensity = 0f;
+            }
 
             // THE FLAMES ARE GONE. Set this BEFORE the callback, so anything
             // the callback triggers already sees the fire as out — and well
