@@ -83,6 +83,45 @@ using TMPro;
 //
 // NULL IN KITCHEN AND CLASSROOM, so those scenes get the original
 // wording with no change at all.
+//
+// -------------------------------------------------------
+// THE LOSE NOTE LINE NOW MATCHES THE WIN NOTE
+//
+// The win panel ends with a note line: "Practice run — your recorded
+// result for this event is unchanged", or "Passed on attempt N". The
+// lose panel had the same object in the scene (LoseDryRun Text) but it
+// never appeared, for three separate reasons:
+//
+//   1. THE FIELD WAS EMPTY. loseAttemptText was never assigned in the
+//      Inspector, so every write to it went nowhere.
+//
+//   2. NOTHING TURNED IT ON. The win path calls SetActive(true) on its
+//      note; the lose path never did. Its GameObject sits inactive in the
+//      scene, so even an assigned field would have stayed invisible.
+//
+//   3. THE PRACTICE TEXT WAS ALSO GLUED ONTO THE MESSAGE. ShowLoseResult
+//      appended "This was a practice run..." to the body AND wrote
+//      "Practice run" to the note — the same fact twice in one panel, in
+//      two different places, with two different wordings.
+//
+// Fixed here by giving the lose panel the same shape the win panel
+// already had: one note line, turned on when it has something to say and
+// off when it does not, and the body message left to describe the LOSS
+// rather than the recording status.
+//
+// THE RULES are parallel, the WORDS are not. Each panel owns its own
+// note sentences in the Inspector, so either can be reworded without
+// touching the other.
+//
+// The rules they share: the practice notice whenever the run was not
+// recorded, the attempt line from the SECOND attempt onward, and nothing
+// at all on a first attempt — rather than announcing "Attempt 1" to
+// someone who has only just started.
+//
+// The one thing to watch, now that the sentences are separate: the
+// practice notice describes the same fact on both panels. Reword one and
+// leave the other and the game explains the same rule two ways, with
+// which one you get depending on whether you won.
 // -------------------------------------------------------
 
 public class ResultsUIManager : MonoBehaviour
@@ -116,10 +155,14 @@ public class ResultsUIManager : MonoBehaviour
     public TextMeshProUGUI loseTitleText;
     public TextMeshProUGUI loseMessageText;
 
-    [Tooltip("Optional — shows which attempt this was, e.g. 'Attempt 3'. " +
-             "Shows 'Practice run' instead when the participant has already " +
-             "passed and the run was not recorded.")]
-    public TextMeshProUGUI loseAttemptText;
+    [Tooltip("Optional — the note line at the bottom of the lose panel. " +
+             "DRAG LoseDryRun Text HERE — it is the twin of Win Note Text.\n\n" +
+             "Shows Lose Practice Note when the run was not recorded, and " +
+             "Lose Attempt Note from the second attempt onward. Hidden by " +
+             "itself when there is nothing to say: a first attempt, the " +
+             "moment a run ends before the server has replied, or a " +
+             "connection failure where no attempt number exists.")]
+    public TextMeshProUGUI loseNoteText;
 
     [Header("Timeout Wording")]
     [TextArea]
@@ -142,6 +185,35 @@ public class ResultsUIManager : MonoBehaviour
     private string timeoutNoPenaltiesMessage =
         "The fire got out of control before you finished. Review what went " +
         "wrong, then try again.";
+
+    [Header("Note Line Wording")]
+    [TextArea]
+    [Tooltip("WIN panel, practice run — shown when the participant has " +
+             "already passed this event, so nothing was saved.")]
+    [SerializeField]
+    private string winPracticeNote =
+        "Practice run — your recorded result for this event is unchanged.";
+
+    [TextArea]
+    [Tooltip("LOSE panel, practice run — same situation, its own wording. " +
+             "WRITE WHATEVER YOU WANT HERE.\n\n" +
+             "Separate from the win version by request. Worth knowing what " +
+             "that costs: these two describe the SAME fact, so if you edit " +
+             "one and forget the other, the game will explain the same rule " +
+             "two different ways depending on whether the player won. Keep " +
+             "them saying the same thing even when the words differ.")]
+    [SerializeField]
+    private string losePracticeNote =
+        "Practice run — your recorded result for this event is unchanged.";
+
+    [Tooltip("Shown on the LOSE panel from the SECOND attempt onward — {0} " +
+             "is the attempt number.\n\n" +
+             "Mirrors the win panel's 'Passed on attempt N'. Like that one, " +
+             "it stays hidden on a first attempt: the player knows it was " +
+             "their first go, so the line would only be stating the obvious " +
+             "under a message about losing.")]
+    [SerializeField]
+    private string loseAttemptNote = "Attempt {0}.";
 
     [Header("Wrong Decision Loss (Office only)")]
     [Tooltip("Kicker shown when the run ended because the player cleared the " +
@@ -207,6 +279,30 @@ public class ResultsUIManager : MonoBehaviour
     }
 
     // -------------------------------------------------------
+    // Writes a note line, or hides it when there is nothing to say.
+    //
+    // Shared by both panels so they can never drift apart: the same
+    // decision, the same wording, one place to change it.
+    //
+    // HIDING MATTERS AS MUCH AS WRITING. A note left on screen with stale
+    // text from the previous run is worse than no note at all — the
+    // player reads it as being about THIS run.
+    // -------------------------------------------------------
+    private void SetNote(TextMeshProUGUI note, string text)
+    {
+        if (note == null) return;
+
+        if (string.IsNullOrEmpty(text))
+        {
+            note.gameObject.SetActive(false);
+            return;
+        }
+
+        note.gameObject.SetActive(true);
+        note.text = text;
+    }
+
+    // -------------------------------------------------------
     // SUBMITTING — brief "please wait" until the server responds.
     // -------------------------------------------------------
     public void ShowSubmitting()
@@ -254,28 +350,23 @@ public class ResultsUIManager : MonoBehaviour
             winPenaltyText.text = penalties + "s";
         }
 
-        if (winNoteText != null)
+        if (response.already_recorded)
         {
-            if (response.already_recorded)
-            {
-                // A practice run. The score above is real — it just was
-                // not saved, because their passing attempt is already on
-                // record. Without this line a 95% practice run looks like
-                // a new result while the certificate still says 70%.
-                winNoteText.gameObject.SetActive(true);
-                winNoteText.text = "Practice run — your recorded result for this event is unchanged.";
-            }
-            else if (response.attempt_number > 1)
-            {
-                // Passing on a later try is worth acknowledging — it took
-                // them more than one go and they got there.
-                winNoteText.gameObject.SetActive(true);
-                winNoteText.text = "Passed on attempt " + response.attempt_number + ".";
-            }
-            else
-            {
-                winNoteText.gameObject.SetActive(false);
-            }
+            // A practice run. The score above is real — it just was not
+            // saved, because their passing attempt is already on record.
+            // Without this line a 95% practice run looks like a new result
+            // while the certificate still says 70%.
+            SetNote(winNoteText, winPracticeNote);
+        }
+        else if (response.attempt_number > 1)
+        {
+            // Passing on a later try is worth acknowledging — it took them
+            // more than one go and they got there.
+            SetNote(winNoteText, "Passed on attempt " + response.attempt_number + ".");
+        }
+        else
+        {
+            SetNote(winNoteText, null);
         }
     }
 
@@ -320,20 +411,31 @@ public class ResultsUIManager : MonoBehaviour
                       response.percentage_score + "%, below the 50% needed to pass.";
         }
 
-        // Failing a practice run must not read as losing something they
-        // already earned — their passing attempt still stands.
-        if (response.already_recorded)
-        {
-            message += " This was a practice run — your recorded result is unchanged.";
-        }
-
+        // The practice notice is NO LONGER glued onto this message. It goes
+        // on the note line below, exactly where the win panel puts it —
+        // otherwise a practice loss states the same fact twice, in two
+        // different wordings, in one panel.
         ShowLosePanel(kicker, "Fire Spread!", message);
 
-        if (loseAttemptText != null)
+        // Written AFTER ShowLosePanel, which clears the note. Order matters
+        // here: move this above and the note is wiped a frame after it is set.
+        //
+        // THE SAME THREE CASES AS THE WIN PANEL, in the same order, so the
+        // two never disagree about when a note belongs on screen:
+        //   practice run   -> the notice, word for word as the win shows it
+        //   attempt 2+     -> which attempt this was
+        //   first attempt  -> nothing
+        if (response.already_recorded)
         {
-            loseAttemptText.text = response.already_recorded
-                ? "Practice run"
-                : "Attempt " + response.attempt_number;
+            SetNote(loseNoteText, losePracticeNote);
+        }
+        else if (response.attempt_number > 1)
+        {
+            SetNote(loseNoteText, string.Format(loseAttemptNote, response.attempt_number));
+        }
+        else
+        {
+            SetNote(loseNoteText, null);
         }
     }
 
@@ -346,6 +448,12 @@ public class ResultsUIManager : MonoBehaviour
     //
     // It is also the only thing the player sees if the POST fails, which
     // is exactly when you want a local fallback.
+    //
+    // NO NOTE LINE HERE, deliberately. The attempt number and the recorded
+    // status are both the server's answers, and it has not replied yet.
+    // ShowLosePanel leaves the note hidden, and ShowLoseResult fills it in
+    // a moment later — so the line appears once, with the truth, instead of
+    // guessing and then correcting itself on screen.
     //
     // THE NAME IS NOW SLIGHTLY WRONG. It handles two local losses, not
     // just the timer. Renaming it would break the Inspector wiring on
@@ -373,6 +481,9 @@ public class ResultsUIManager : MonoBehaviour
     // -------------------------------------------------------
     // LOSE — NETWORK / UNKNOWN ERROR
     // Hook to: ResultsSubmitter -> On Connection Error / On Unknown Error
+    //
+    // The note stays hidden: nothing was saved, so there is no attempt
+    // number to report and no way to know whether it would have counted.
     // -------------------------------------------------------
     public void ShowLoseNetworkIssue(string message)
     {
@@ -401,8 +512,11 @@ public class ResultsUIManager : MonoBehaviour
         if (loseMessageText != null)
             loseMessageText.text = message;
 
-        if (loseAttemptText != null)
-            loseAttemptText.text = "";
+        // Hidden rather than blanked. An empty but ACTIVE text object still
+        // takes up its layout space, which shifts the button below it by a
+        // line — so the panel would visibly jump when ShowLoseResult filled
+        // the note in a moment later.
+        SetNote(loseNoteText, null);
     }
 
     // Hides all result panels so only one shows at a time.
