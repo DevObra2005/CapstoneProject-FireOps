@@ -14146,7 +14146,7 @@ MonoBehaviour:
   - text: Look for the kitchen towel. Go to it!
     characterPose: {fileID: 21300000, guid: 2cb2c185d83af914aa26b4c0fb08c86f, type: 3}
     demoVideo: {fileID: 0}
-    voiceClip: {fileID: 8300000, guid: 52407c168fa194c48a54522212b127e0, type: 3}
+    voiceClip: {fileID: 8300000, guid: 86efb9cc72ecef443b2b8f3e00727cc8, type: 3}
   teachTarget1: {fileID: 1625928391}
   teach1Lines:
   - text: This is an ordinary kitchen towel. Wet it, and it becomes the safest thing
