@@ -2179,7 +2179,7 @@ MonoBehaviour:
   wrongFirePenalty: 30
   dangerZonePenalty: 25
   farFireActionName: Attacked the far fire instead of the one blocking the exit
-  wrongFireTip: Wrong fire. The door one blocked your exit..
+  wrongFireTip: Wrong fire. The door one blocked your exit.
   dangerZoneTip: Never let fire get between you and the exit. Clear the doorway first.
   blockedExitTip: The door is blocked. You're trapped.
   secondFireTip: "Exit is clear. Leave the rest \u2014 evacuate."
