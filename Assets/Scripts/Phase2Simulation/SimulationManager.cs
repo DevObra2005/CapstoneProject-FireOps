@@ -591,6 +591,11 @@ public class SimulationManager : MonoBehaviour
             EndStepLockout();
         }
 
+        // PRACTICE RUN - no clock. The tutorial is for learning the steps,
+        // not racing a timer. The safety valve above still runs. Every real
+        // run skips this line (IsActive is false) and counts down as before.
+        if (PracticeRun.IsActive) return;
+
         timeRemaining -= Time.deltaTime;
 
         if (timeRemaining <= 0f)
@@ -726,6 +731,22 @@ public class SimulationManager : MonoBehaviour
     public void RegisterWrongAction(string stepName, string chosenAction, float timePenalty, string tip, bool showTipDirectly = false)
     {
         if (!simActive) return;
+
+        // PRACTICE RUN - show the tip, take nothing, record nothing.
+        // Amber hint, the same one Door uses for a blocked exit: information,
+        // not a mark against the player. The cooldown still applies, so a
+        // spammed wrong tap cannot skip past the tip. Every real run skips
+        // this block (IsActive is false) and is penalised exactly as before.
+        if (PracticeRun.IsActive)
+        {
+            if (ActionFeedbackManager.Instance != null)
+                ActionFeedbackManager.Instance.ShowHint(
+                    showTipDirectly ? tip : StepNames.Hint(currentStep, useKitchenHints));
+
+            BeginTimedLockout(wrongActionCooldown);
+            PracticeRun.ReportWrongAction(tip);
+            return;
+        }
 
         // Only take the time that ACTUALLY existed to lose. timeRemaining
         // floors at 0, but totalPenaltySeconds used to add the full nominal
@@ -1474,6 +1495,18 @@ public class SimulationManager : MonoBehaviour
         HideEvacuateArrow();
 
 
+
+        // PRACTICE RUN - every cleanup above has already run, exactly as for
+        // a real run. Skipped: resetting SimulationMode, the win/lose sounds
+        // and panels, and the Laravel submission. A practice run is NEVER
+        // recorded as an attempt. TutorialManager takes over from here.
+        // Every real run skips this block (IsActive is false).
+        if (PracticeRun.IsActive)
+        {
+            Debug.Log($"[SimulationManager] PRACTICE ended (won: {won}, reason: '{failReason}'). Nothing submitted.");
+            PracticeRun.ReportEnded(won, failReason);
+            return;
+        }
 
         GameModeManager modeManager = FindFirstObjectByType<GameModeManager>();
         if (modeManager != null)

@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 // -------------------------------------------------------
 // WHAT THIS DOES:
@@ -26,7 +26,7 @@ using UnityEngine;
 public class Phase2Briefing : MonoBehaviour
 {
     [Header("Briefing Lines")]
-    [Tooltip("The BFP officer's intro — plays once when Phase 2 starts")]
+    [Tooltip("The BFP officer's intro ï¿½ plays once when Phase 2 starts")]
     public DialogueLine[] briefingLines;
 
     [Header("Timing")]
@@ -39,7 +39,7 @@ public class Phase2Briefing : MonoBehaviour
     private void Start()
     {
         // Only run in Phase 2. During Phase 1 this object does
-        // nothing at all — we switch the script off entirely so
+        // nothing at all ï¿½ we switch the script off entirely so
         // it isn't wasting an Update call.
         if (PlayerPrefs.GetInt("SimulationMode", 0) != 1)
         {
@@ -47,8 +47,18 @@ public class Phase2Briefing : MonoBehaviour
             return;
         }
 
+        // PRACTICE RUN - the tutorial plays its own intro and starts the run
+        // itself. This briefing (and its "timed simulation" message) is for
+        // the real simulation only. Every real run skips this block
+        // (IsActive is false) and plays the briefing exactly as before.
+        if (PracticeRun.IsActive)
+        {
+            enabled = false;
+            return;
+        }
+
         // Invoke runs a method after a delay, by name. Same idea
-        // as a short setTimeout — gives the scene a moment to
+        // as a short setTimeout ï¿½ gives the scene a moment to
         // finish loading before the panel slides in.
         Invoke(nameof(PlayBriefing), startDelay);
     }
@@ -63,23 +73,23 @@ public class Phase2Briefing : MonoBehaviour
         // skip the briefing and begin immediately.
         if (DialogueManager.Instance == null)
         {
-            Debug.LogWarning("[Phase2Briefing] No DialogueManager found — starting simulation immediately.");
+            Debug.LogWarning("[Phase2Briefing] No DialogueManager found ï¿½ starting simulation immediately.");
             StartTimer();
             return;
         }
 
         // FALLBACK: lines were never filled in on the Inspector.
-        // Same reasoning — don't strand the player.
+        // Same reasoning ï¿½ don't strand the player.
         if (briefingLines == null || briefingLines.Length == 0)
         {
-            Debug.LogWarning("[Phase2Briefing] No briefing lines assigned — starting simulation immediately.");
+            Debug.LogWarning("[Phase2Briefing] No briefing lines assigned ï¿½ starting simulation immediately.");
             StartTimer();
             return;
         }
 
         // The third argument (true) marks this as a completion
         // dialogue, which makes the final button read "GOT IT"
-        // instead of "DO IT" — correct here, since the player
+        // instead of "DO IT" ï¿½ correct here, since the player
         // isn't being sent to tap a specific object.
         DialogueManager.Instance.StartDialogue(
             briefingLines,
@@ -103,7 +113,7 @@ public class Phase2Briefing : MonoBehaviour
 
         if (SimulationManager.Instance == null)
         {
-            Debug.LogError("[Phase2Briefing] No SimulationManager in scene — timer cannot start!");
+            Debug.LogError("[Phase2Briefing] No SimulationManager in scene ï¿½ timer cannot start!");
             return;
         }
         SimulationManager.Instance.BeginSimulation();
