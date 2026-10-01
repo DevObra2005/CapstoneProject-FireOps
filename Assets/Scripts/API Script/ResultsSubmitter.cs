@@ -1,7 +1,8 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.Events;
 
 // ── WHY THESE EXIST ───────────────────────────────────────────────
@@ -20,6 +21,28 @@ public class RetryResultEvent : UnityEvent<SubmitResultResponse> { }
 [System.Serializable]
 public class StringResultEvent : UnityEvent<string> { }
 
+// -------------------------------------------------------
+// OFFLINE RESULTS — HOW A RUN IS SENT NOW
+//
+// Every finished run goes THROUGH THE OUTBOX, online or not:
+//
+//   1. Build the payload, with a unique participant_attempt_id (the
+//      "order number") and played_at (when it finished, UTC).
+//   2. Save it in OfflineOutbox — a file on the phone.
+//   3. Ask OutboxUploader to send everything waiting, oldest first.
+//   4. Wait for the uploader to report THIS run:
+//        Laravel answered  -> onSaved (Win) / onRetry (Lose), as before
+//        no internet       -> onSavedOffline - the run stays on the phone
+//                             and uploads by itself when the internet returns
+//
+// WHY ALWAYS THROUGH THE OUTBOX, EVEN ONLINE:
+// Order. If an older offline run is still waiting, it must reach Laravel
+// BEFORE this one, because Laravel numbers attempts in arrival order.
+// Online, the extra step takes milliseconds - the player sees no change.
+//
+// THE RUN IS SAVED UNDER THE TOKEN OF WHOEVER PLAYED IT, so on a shared
+// tablet it still uploads as them after someone else logs in.
+// -------------------------------------------------------
 public class ResultsSubmitter : MonoBehaviour
 {
     [Header("Environment")]
@@ -35,11 +58,25 @@ public class ResultsSubmitter : MonoBehaviour
              "participant had already passed this environment.")]
     public RetryResultEvent onRetry;
 
-    [Tooltip("Laravel unreachable. The attempt was NOT recorded.")]
+    [Tooltip("NO INTERNET — the run was SAVED ON THE PHONE and will upload by " +
+             "itself when the connection returns. Show the 'Saved! Your score " +
+             "will appear once you're back online' panel.\n\n" +
+             "Leave EMPTY and On Connection Error is used instead, exactly as " +
+             "before this event existed.")]
+    public StringResultEvent onSavedOffline;
+
+    [Tooltip("FALLBACK for no internet, used only when On Saved Offline has " +
+             "nothing connected. The run is still saved on the phone either way.")]
     public StringResultEvent onConnectionError;
 
     [Tooltip("Anything unexpected — validation errors, bad token, 500s.")]
     public StringResultEvent onUnknownError;
+
+    [Header("Waiting")]
+    [Tooltip("Longest the result screen waits for this run's answer before " +
+             "treating it as saved offline. Safety net only - the uploader " +
+             "normally answers well before this.")]
+    public float maxWaitSeconds = 45f;
 
     // ── Called by SimulationManager when the run ends ─────────────────
     //
@@ -97,6 +134,12 @@ public class ResultsSubmitter : MonoBehaviour
         // with a 422 — which would look like "attempts are not saving".
         if (steps == null) steps = new List<StepResult>();
 
+        // ── 1. BUILD THE PAYLOAD ─────────────────────────────────────
+        // The order number and play time are created ONCE, here. The outbox
+        // stores the finished JSON, so every retry sends exactly this.
+        string attemptId = Guid.NewGuid().ToString();
+        string playedAt = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
         ResultsPayload payload = new ResultsPayload
         {
             event_id = eventId,
@@ -111,6 +154,9 @@ public class ResultsSubmitter : MonoBehaviour
             // given" — see the note above on falling back to inference.
             fail_reason = failReason,
 
+            participant_attempt_id = attemptId,
+            played_at = playedAt,
+
             steps = steps
         };
 
@@ -120,58 +166,113 @@ public class ResultsSubmitter : MonoBehaviour
         Debug.Log("Submitting results: " + jsonBody);
 #endif
 
-        UnityWebRequest request = new UnityWebRequest(ApiConfig.ResultsUrl, "POST");
-        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
-        request.SetRequestHeader("Accept", "application/json");
-        request.SetRequestHeader("Authorization", "Bearer " + token);
-
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.ConnectionError ||
-            request.result == UnityWebRequest.Result.DataProcessingError)
+        // ── 2. SAVE IT ON THE PHONE FIRST ────────────────────────────
+        // From this line on, the run cannot be lost: even if the app closes
+        // right now, it is in the outbox and uploads on the next start.
+        OfflineOutbox.Add(new OutboxEntry
         {
-            onConnectionError?.Invoke("Cannot connect to server. Results not saved yet — will need to retry.");
+            attemptId = attemptId,
+            token = token,
+            environment = environment,
+            payloadJson = jsonBody,
+            createdAtUtc = playedAt,
+            tries = 0,
+            lastError = ""
+        });
+
+        OutboxUploader uploader = OutboxUploader.Instance;
+        if (uploader == null)
+        {
+            // Should never happen - the uploader creates itself at startup.
+            // The run is safe in the outbox and uploads on the next start.
+            Debug.LogWarning("[ResultsSubmitter] No OutboxUploader running - result kept on the phone.");
+            ReportSavedOffline();
             yield break;
         }
 
-        string responseText = request.downloadHandler.text;
+        // ── 3 + 4. SEND, AND WAIT FOR THIS RUN'S ANSWER ──────────────
+        bool gotAnswer = false;
+        bool uploaderIdle = false;
+        UploadOutcome outcome = UploadOutcome.Offline;
+        string responseText = "";
 
+        Action<OutboxEntry, UploadOutcome, string> onEntry = (entry, o, text) =>
+        {
+            if (entry.attemptId != attemptId) return;   // someone else's run
+            gotAnswer = true;
+            outcome = o;
+            responseText = text;
+        };
+        Action onIdle = () => uploaderIdle = true;
+
+        OutboxUploader.EntryProcessed += onEntry;
+        OutboxUploader.FlushFinished += onIdle;
+
+        try
+        {
+            uploader.RequestFlush();
+
+            float waitUntil = Time.unscaledTime + maxWaitSeconds;
+
+            // Stop waiting when: this run got an answer, OR the uploader went
+            // idle without reaching it (an older run hit "no internet" first),
+            // OR the safety time ran out.
+            while (!gotAnswer && !uploaderIdle && Time.unscaledTime < waitUntil)
+                yield return null;
+        }
+        finally
+        {
+            OutboxUploader.EntryProcessed -= onEntry;
+            OutboxUploader.FlushFinished -= onIdle;
+        }
+
+        if (!gotAnswer)
+        {
+            ReportSavedOffline();
+            yield break;
+        }
+
+        switch (outcome)
+        {
+            case UploadOutcome.Uploaded:
+                HandleServerAnswer(responseText, failReason);
+                break;
+
+            case UploadOutcome.Offline:
+            case UploadOutcome.ServerError:
+                // Still in the outbox - uploads by itself later.
+                ReportSavedOffline();
+                break;
+
+            case UploadOutcome.AuthFailed:
+                onUnknownError?.Invoke("Login not accepted by the server. The result is kept on this device. " + responseText);
+                break;
+
+            case UploadOutcome.Rejected:
+                onUnknownError?.Invoke("Server rejected the result (422): " + responseText);
+                break;
+        }
+    }
+
+    // -------------------------------------------------------
+    // LARAVEL ANSWERED - same handling as before the outbox existed.
+    // -------------------------------------------------------
+    private void HandleServerAnswer(string responseText, string failReason)
+    {
 #if UNITY_EDITOR
-        Debug.Log("Results response (" + request.responseCode + "): " + responseText);
+        Debug.Log("Results response: " + responseText);
 #endif
 
-        // A recorded attempt returns 201 Created. A PRACTICE RUN — one
-        // played after the participant already passed this environment —
-        // returns 200 OK with already_recorded true and nothing written.
-        // Both are valid outcomes, so both must pass this gate.
-        //
-        // Anything else is a real error: a 422 validation failure, an
-        // expired token, a 500. Without this check a bad response would
-        // quietly deserialise into an all-defaults object and read as a
-        // failed run rather than a broken request.
-        if (request.responseCode != 201 && request.responseCode != 200)
-        {
-            onUnknownError?.Invoke("Server returned " + request.responseCode + ": " + responseText);
-            yield break;
-        }
-
         // ── ONE SHAPE, ONE PARSE ──────────────────────────────────────
-        // The old SavedFlagPeek trick is gone. It existed because the
-        // server used to send two different JSON shapes and we had to
-        // sniff 'saved' before choosing which class to parse into.
-        //
-        // Now every response is the same shape. 'saved' tells you whether
-        // a row was written; 'passed' is the actual verdict, and it is
-        // the ONLY thing that should pick Win vs Lose.
+        // Every response is the same shape. 'saved' tells you whether a
+        // row was written; 'passed' is the actual verdict, and it is the
+        // ONLY thing that should pick Win vs Lose.
         SubmitResultResponse result = JsonUtility.FromJson<SubmitResultResponse>(responseText);
 
         if (result == null)
         {
             onUnknownError?.Invoke("Could not parse server response.");
-            yield break;
+            return;
         }
 
 #if UNITY_EDITOR
@@ -179,7 +280,7 @@ public class ResultsSubmitter : MonoBehaviour
                   $"passed: {result.passed}, score: {result.percentage_score}%, " +
                   $"sent fail_reason: '{failReason}', " +
                   $"stored fail_reason: '{result.fail_reason}', " +
-                  $"recorded: {!result.already_recorded}");
+                  $"recorded: {!result.already_recorded}, duplicate: {result.duplicate}");
 #endif
 
         // Win or Lose reflects how they actually PLAYED, even on a
@@ -190,5 +291,23 @@ public class ResultsSubmitter : MonoBehaviour
             onSaved?.Invoke(result);
         else
             onRetry?.Invoke(result);
+    }
+
+    // -------------------------------------------------------
+    // NO INTERNET - the run is safe on the phone.
+    // Uses On Saved Offline when it is connected; otherwise falls back to
+    // On Connection Error, so a scene without the new panel still shows
+    // something rather than freezing on the submitting screen.
+    // -------------------------------------------------------
+    private void ReportSavedOffline()
+    {
+        const string message = "Saved! Your score will appear once you're back online.";
+
+        Debug.Log($"[ResultsSubmitter] Offline - result saved on this device. Waiting to upload: {OfflineOutbox.Count}.");
+
+        if (onSavedOffline != null && onSavedOffline.GetPersistentEventCount() > 0)
+            onSavedOffline.Invoke(message);
+        else
+            onConnectionError?.Invoke(message);
     }
 }

@@ -46,6 +46,26 @@ public class ResultsPayload
     // working with no change at all.
     public string fail_reason;
 
+    // ── OFFLINE RESULTS ──────────────────────────────────────────────
+    //
+    // participant_attempt_id — a UUID created ONCE when the run finishes.
+    // If the internet drops after Laravel saved the run but before Unity
+    // got the answer, the outbox uploads the same run again later. Laravel
+    // sees the same ID, saves nothing new, and answers with the original
+    // result (duplicate = true). Like an order number: paying twice for the
+    // same order does not charge twice.
+    //
+    // played_at — when the run finished ON THE PHONE, in UTC, ISO 8601
+    // ("2026-09-30T02:15:00Z"). A run played Monday and uploaded Tuesday is
+    // stored as Monday. Laravel ignores it if the phone clock says the
+    // future.
+    //
+    // Both are created by ResultsSubmitter, never edited afterwards — the
+    // outbox stores the finished JSON, so a re-upload is byte-for-byte the
+    // same request.
+    public string participant_attempt_id;
+    public string played_at;
+
     public List<StepResult> steps;
 }
 
@@ -65,6 +85,12 @@ public class SubmitResultResponse
 {
     public bool saved;             // false on a practice run — not a Win/Lose signal
     public bool already_recorded;  // true = they had already passed; nothing saved
+
+    // OFFLINE RESULTS — true when this exact run (same participant_attempt_id)
+    // was already saved by an earlier upload. The other fields then describe
+    // that ORIGINAL save, so the player sees the same result either way.
+    public bool duplicate;
+
     public bool passed;            // true = Win screen, false = Lose screen
     public bool retry;             // opposite of passed — offer another go
 
