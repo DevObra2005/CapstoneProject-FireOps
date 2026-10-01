@@ -17114,7 +17114,7 @@ MonoBehaviour:
   correctColor: {r: 0.18, g: 0.8, b: 0.44, a: 1}
   wrongColor: {r: 0.91, g: 0.3, b: 0.24, a: 1}
   hintColor: {r: 0.95, g: 0.68, b: 0.18, a: 1}
-  hintTitle: MOVE
+  hintTitle: TRY AGAIN
 --- !u!1 &728491379
 GameObject:
   m_ObjectHideFlags: 0
@@ -61464,8 +61464,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u25CF Identify the fire hazards in the office.\r\n\u25CB Click or tap
-    each hazard found."
+  m_text: 'Identify the fire hazards in the office.
+
+    Click or tap each hazard
+    found.'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 66ced1d7bec367941bb4df5b2af92931, type: 2}
   m_sharedMaterial: {fileID: 4574247269873975922, guid: 66ced1d7bec367941bb4df5b2af92931, type: 2}

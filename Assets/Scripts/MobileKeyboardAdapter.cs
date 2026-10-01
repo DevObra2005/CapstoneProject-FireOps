@@ -94,8 +94,16 @@ public class MobileKeyboardAdapter : MonoBehaviour
     [Tooltip("Filled in automatically. Which signal is reporting a keyboard right now.")]
     [SerializeField] private string detectedBy = "closed";
 
+    // INSPECTOR READ-OUT, NOT DEAD CODE.
+    // The script writes this so it can be WATCHED in the Inspector while testing
+    // the keyboard - it shows when a close is waiting out the debounce. No code
+    // reads it, so the compiler reports CS0414 ("assigned but never used").
+    // The warning is silenced for this one field only; the restore line turns it
+    // straight back on for everything below.
+#pragma warning disable 0414
     [Tooltip("Filled in automatically. True while a close is waiting out the debounce.")]
     [SerializeField] private bool closePending;
+#pragma warning restore 0414
 
     private RectTransform canvasRect;
     private Vector2 restPosition;
