@@ -65,6 +65,14 @@ public class ResultsSubmitter : MonoBehaviour
              "before this event existed.")]
     public StringResultEvent onSavedOffline;
 
+    [Tooltip("NO INTERNET after a LOSS (wrong fire, timeout). The Lose panel is " +
+             "ALREADY on screen - SimulationManager shows it straight away, before " +
+             "Laravel is asked anything - so a second panel would stack on top of it.\n\n" +
+             "Instead, show a small note ON the Lose panel, e.g. turn on an " +
+             "'OfflineNoteText' inside LoseCard. The lesson stays visible.\n\n" +
+             "Leave EMPTY and On Connection Error is used instead.")]
+    public StringResultEvent onSavedOfflineAfterLoss;
+
     [Tooltip("FALLBACK for no internet, used only when On Saved Offline has " +
              "nothing connected. The run is still saved on the phone either way.")]
     public StringResultEvent onConnectionError;
@@ -181,12 +189,17 @@ public class ResultsSubmitter : MonoBehaviour
         });
 
         OutboxUploader uploader = OutboxUploader.Instance;
+        // How the run ended ON THE PHONE. A loss already has its Lose panel on
+        // screen (SimulationManager shows it immediately), so the offline
+        // message must not add a second panel on top of it.
+        bool endedInLoss = !passed;
+
         if (uploader == null)
         {
             // Should never happen - the uploader creates itself at startup.
             // The run is safe in the outbox and uploads on the next start.
             Debug.LogWarning("[ResultsSubmitter] No OutboxUploader running - result kept on the phone.");
-            ReportSavedOffline();
+            ReportSavedOffline(endedInLoss);
             yield break;
         }
 
@@ -228,7 +241,7 @@ public class ResultsSubmitter : MonoBehaviour
 
         if (!gotAnswer)
         {
-            ReportSavedOffline();
+            ReportSavedOffline(endedInLoss);
             yield break;
         }
 
@@ -241,7 +254,7 @@ public class ResultsSubmitter : MonoBehaviour
             case UploadOutcome.Offline:
             case UploadOutcome.ServerError:
                 // Still in the outbox - uploads by itself later.
-                ReportSavedOffline();
+                ReportSavedOffline(endedInLoss);
                 break;
 
             case UploadOutcome.AuthFailed:
@@ -295,18 +308,34 @@ public class ResultsSubmitter : MonoBehaviour
 
     // -------------------------------------------------------
     // NO INTERNET - the run is safe on the phone.
-    // Uses On Saved Offline when it is connected; otherwise falls back to
-    // On Connection Error, so a scene without the new panel still shows
-    // something rather than freezing on the submitting screen.
+    //
+    // WHICH MESSAGE DEPENDS ON HOW THE RUN ENDED:
+    //
+    //   Ended in time  -> the screen is showing the "submitting" spinner,
+    //                     waiting for Laravel's verdict. Replace it with the
+    //                     RESULT SAVED panel (On Saved Offline).
+    //
+    //   Ended in loss  -> the Lose panel is ALREADY up, with the lesson the
+    //                     player needs (why the fire spread, what to do).
+    //                     Don't stack a second panel on it - just turn on a
+    //                     small note inside it (On Saved Offline After Loss).
+    //
+    // Either event left empty falls back to On Connection Error, so a scene
+    // that is not wired yet still shows something rather than freezing.
     // -------------------------------------------------------
-    private void ReportSavedOffline()
+    private void ReportSavedOffline(bool endedInLoss)
     {
-        const string message = "Saved! Your score will appear once you're back online.";
+        string message = endedInLoss
+            ? "Saved on this device. It will upload automatically when you're back online."
+            : "Saved! Your score will appear once you're back online.";
 
-        Debug.Log($"[ResultsSubmitter] Offline - result saved on this device. Waiting to upload: {OfflineOutbox.Count}.");
+        Debug.Log($"[ResultsSubmitter] Offline - result saved on this device " +
+                  $"({(endedInLoss ? "after a loss" : "finished in time")}). Waiting to upload: {OfflineOutbox.Count}.");
 
-        if (onSavedOffline != null && onSavedOffline.GetPersistentEventCount() > 0)
-            onSavedOffline.Invoke(message);
+        StringResultEvent target = endedInLoss ? onSavedOfflineAfterLoss : onSavedOffline;
+
+        if (target != null && target.GetPersistentEventCount() > 0)
+            target.Invoke(message);
         else
             onConnectionError?.Invoke(message);
     }
