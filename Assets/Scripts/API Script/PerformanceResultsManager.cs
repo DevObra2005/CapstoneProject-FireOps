@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Networking;
@@ -20,6 +21,19 @@ using TMPro;
 //
 // No separate "locked" text objects — we reuse the same two score texts
 // to show either the score or the locked message.
+//
+// OFFLINE:
+// Every successful answer from Laravel is saved on the phone
+// (OfflineCache). With no internet, the cards are filled from that saved
+// copy instead of all showing "Locked" - which would wrongly tell a
+// participant they had completed nothing.
+//
+// The Offline Notice says so: "Offline - showing your results from
+// Oct 1, 9:45 PM." It also counts runs still waiting in the outbox,
+// because a run played offline is not in Laravel's answer yet.
+//
+// The saved copy belongs to the participant who was logged in, so on a
+// shared tablet nobody sees someone else's results.
 // -------------------------------------------------------
 
 [System.Serializable]
@@ -67,6 +81,15 @@ public class PerformanceResultsManager : MonoBehaviour
     public GameObject loadingIndicator;
     public GameObject errorIndicator;
 
+    [Header("Offline (optional)")]
+    [Tooltip("Small text that explains offline / waiting uploads, e.g. " +
+             "'Offline - showing your results from Oct 1, 9:45 PM.' " +
+             "Shown only when there is something to say; hidden otherwise.")]
+    public TextMeshProUGUI offlineNoticeText;
+
+    [Tooltip("Seconds to wait for Laravel before using the saved copy.")]
+    public int requestTimeoutSeconds = 8;
+
     [Header("Scene")]
     [Tooltip("Exact name of the detail scene to load when a card is tapped.")]
     public string detailSceneName = "ResultsDetailScene";
@@ -79,6 +102,7 @@ public class PerformanceResultsManager : MonoBehaviour
         SetCardLocked(classroomCard);
 
         if (errorIndicator != null) errorIndicator.SetActive(false);
+        SetNotice(null);
 
         StartCoroutine(FetchResults());
     }
@@ -89,38 +113,73 @@ public class PerformanceResultsManager : MonoBehaviour
 
         string token = PlayerPrefs.GetString("participant_token", "");
         int eventId = PlayerPrefs.GetInt("participant_event_id", 0);
+        string cacheKey = OfflineCache.KeyFor("results", "event" + eventId);
 
         string url = ApiConfig.ResultsUrl + "?event_id=" + eventId;
 
-        UnityWebRequest request = UnityWebRequest.Get(url);
-        request.SetRequestHeader("Authorization", "Bearer " + token);
-        request.SetRequestHeader("Accept", "application/json");
-
-        yield return request.SendWebRequest();
-
-        if (loadingIndicator != null) loadingIndicator.SetActive(false);
-
-        if (request.result == UnityWebRequest.Result.ConnectionError ||
-            request.result == UnityWebRequest.Result.DataProcessingError ||
-            request.responseCode != 200)
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
-            Debug.LogError("[PerformanceResults] Fetch failed: " + request.error +
-                           " (code " + request.responseCode + ")");
-            if (errorIndicator != null) errorIndicator.SetActive(true);
+            request.SetRequestHeader("Authorization", "Bearer " + token);
+            request.SetRequestHeader("Accept", "application/json");
+            request.timeout = requestTimeoutSeconds;
+
+            yield return request.SendWebRequest();
+
+            if (loadingIndicator != null) loadingIndicator.SetActive(false);
+
+            bool ok = request.result == UnityWebRequest.Result.Success && request.responseCode == 200;
+
+            if (ok)
+            {
+#if UNITY_EDITOR
+                Debug.Log("[PerformanceResults] Response: " + request.downloadHandler.text);
+#endif
+                string json = request.downloadHandler.text;
+
+                if (Render(json))
+                {
+                    // Remember this answer for the next time there is no internet.
+                    OfflineCache.Save(cacheKey, json);
+                    SetNotice(PendingUploadsLine());
+                }
+                else if (errorIndicator != null)
+                {
+                    errorIndicator.SetActive(true);
+                }
+                yield break;
+            }
+
+            Debug.LogWarning("[PerformanceResults] Fetch failed: " + request.error +
+                             " (code " + request.responseCode + ") - trying the saved copy.");
+        }
+
+        // ── NO INTERNET (or the server did not answer): use the saved copy ──
+        if (OfflineCache.TryLoad(cacheKey, out string savedJson, out DateTime savedAt) && Render(savedJson))
+        {
+            string notice = $"Offline - showing your results from {OfflineCache.FriendlyTime(savedAt)}.";
+            string pending = PendingUploadsLine();
+            if (!string.IsNullOrEmpty(pending)) notice += "\n" + pending;
+            SetNotice(notice);
             yield break;
         }
 
-#if UNITY_EDITOR
-        Debug.Log("[PerformanceResults] Response: " + request.downloadHandler.text);
-#endif
+        // Never loaded online on this device - nothing to show.
+        if (errorIndicator != null) errorIndicator.SetActive(true);
+        string fallback = "Offline - connect to the internet to see your results.";
+        string waiting = PendingUploadsLine();
+        if (!string.IsNullOrEmpty(waiting)) fallback += "\n" + waiting;
+        SetNotice(fallback);
+    }
 
-        ResultsResponse data = JsonUtility.FromJson<ResultsResponse>(request.downloadHandler.text);
+    // Fills the screen from a getMyResults answer. False if it cannot be read.
+    private bool Render(string json)
+    {
+        ResultsResponse data = JsonUtility.FromJson<ResultsResponse>(json);
 
         if (data == null || data.environments == null)
         {
             Debug.LogError("[PerformanceResults] Could not parse response.");
-            if (errorIndicator != null) errorIndicator.SetActive(true);
-            yield break;
+            return false;
         }
 
         if (eventNameText != null)
@@ -133,6 +192,26 @@ public class PerformanceResultsManager : MonoBehaviour
             if (card != null)
                 FillCard(card, env);
         }
+
+        return true;
+    }
+
+    // "2 results waiting to upload." - runs played offline are in the outbox,
+    // not in Laravel's answer yet, so the player should know they are safe.
+    private static string PendingUploadsLine()
+    {
+        int waiting = OfflineOutbox.Count;
+        if (waiting <= 0) return null;
+        return waiting == 1 ? "1 result waiting to upload." : $"{waiting} results waiting to upload.";
+    }
+
+    private void SetNotice(string text)
+    {
+        if (offlineNoticeText == null) return;
+
+        bool show = !string.IsNullOrEmpty(text);
+        offlineNoticeText.gameObject.SetActive(show);
+        if (show) offlineNoticeText.text = text;
     }
 
     private EnvironmentCardUI CardFor(string environment)

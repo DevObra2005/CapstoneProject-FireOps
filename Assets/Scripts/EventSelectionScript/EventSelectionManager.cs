@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
@@ -23,6 +24,20 @@ public class EventListWrapper
 }
 
 // ── Main Script ───────────────────────────────────────────────────────
+//
+// OFFLINE:
+// Every successful events list from Laravel is saved on the phone
+// (OfflineCache). LoginManager auto-logins on a saved token, so with no
+// internet the app still lands here - and instead of "no events", the
+// participant sees the events from the last time they were online, with
+// a notice saying so. They can pick one and play; results wait in the
+// outbox and upload when the internet returns.
+//
+// The saved list belongs to the participant who was logged in, so on a
+// shared tablet nobody sees someone else's events.
+//
+// A saved list can include an event staff closed since. That is fine:
+// submitResult does not check is_open, so the run still uploads and counts.
 public class EventSelectionManager : MonoBehaviour
 {
     // -------------------------------------------------------
@@ -50,11 +65,21 @@ public class EventSelectionManager : MonoBehaviour
     public Transform contentParent;       // Content object inside Scroll View
     public GameObject noEventsText;       // Shown when API returns no open events
 
+    [Header("Offline (optional)")]
+    [Tooltip("Small text explaining the list is a saved copy, e.g. " +
+             "'Offline - showing events from Oct 1, 9:45 PM.' " +
+             "Shown only offline; hidden otherwise.")]
+    public TextMeshProUGUI offlineNoticeText;
+
+    [Tooltip("Seconds to wait for Laravel before using the saved list.")]
+    public int requestTimeoutSeconds = 8;
+
     void Start()
     {
         // Null-guarded. Opening this scene directly in the Editor with an
         // unassigned field used to throw here before any request ran.
         if (noEventsText != null) noEventsText.SetActive(false);
+        SetNotice(null);
 
         StartCoroutine(FetchMyEvents());
     }
@@ -65,68 +90,106 @@ public class EventSelectionManager : MonoBehaviour
         // and the screen that reads it cannot disagree.
         string token = LoginManager.GetToken();
         string url = ApiConfig.EventsUrl;
+        string cacheKey = OfflineCache.KeyFor("events");
 
-        UnityWebRequest request = UnityWebRequest.Get(url);
-        request.SetRequestHeader("Authorization", "Bearer " + token);
-        request.SetRequestHeader("Accept", "application/json");
-
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.ConnectionError ||
-            request.result == UnityWebRequest.Result.DataProcessingError)
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
-            Debug.LogError("FetchMyEvents error: " + request.error);
-            ShowNoEvents();
-            yield break;
-        }
+            request.SetRequestHeader("Authorization", "Bearer " + token);
+            request.SetRequestHeader("Accept", "application/json");
+            request.timeout = requestTimeoutSeconds;
 
+            yield return request.SendWebRequest();
+
+            bool noConnection =
+                request.result == UnityWebRequest.Result.ConnectionError ||
+                request.result == UnityWebRequest.Result.DataProcessingError ||
+                request.responseCode == 0;
+
+            if (!noConnection)
+            {
 #if UNITY_EDITOR
-        Debug.Log("Events response (" + request.responseCode + "): " + request.downloadHandler.text);
+                Debug.Log("Events response (" + request.responseCode + "): " + request.downloadHandler.text);
 #endif
 
-        // ── 401 = the saved token is no longer valid ──
-        //
-        // This matters now that LoginManager auto-logins on a saved token.
-        // If staff deletes the participant, or the token is revoked, the
-        // token still SITS on the device — so the app would skip the login
-        // screen, land here, fail, and show "no events" forever with no way
-        // back. Clearing the session breaks that loop: next launch shows
-        // the login form again.
-        if (request.responseCode == 401)
+                // ── 401 = the saved token is no longer valid ──
+                //
+                // This matters now that LoginManager auto-logins on a saved token.
+                // If staff deletes the participant, or the token is revoked, the
+                // token still SITS on the device — so the app would skip the login
+                // screen, land here, fail, and show "no events" forever with no way
+                // back. Clearing the session breaks that loop: next launch shows
+                // the login form again.
+                if (request.responseCode == 401)
+                {
+                    Debug.LogWarning("[EventSelection] Token rejected (401). Clearing session.");
+                    LoginManager.ClearSession();
+                    SceneManager.LoadScene(LOGIN_SCENE);
+                    yield break;
+                }
+
+                if (request.responseCode == 200)
+                {
+                    string json = request.downloadHandler.text;
+
+                    // Remember this list for the next time there is no internet.
+                    OfflineCache.Save(cacheKey, json);
+
+                    if (!ShowEvents(json)) ShowNoEvents();
+                    yield break;
+                }
+
+                // Any other answer (500 etc.) - the server is having trouble.
+                // Treated like being offline: the saved list is better than nothing.
+                Debug.LogError("FetchMyEvents failed: " + request.responseCode + " - trying the saved list.");
+            }
+            else
+            {
+                Debug.LogWarning("FetchMyEvents error: " + request.error + " - trying the saved list.");
+            }
+        }
+
+        // ── NO INTERNET (or the server did not answer): use the saved list ──
+        if (OfflineCache.TryLoad(cacheKey, out string savedJson, out DateTime savedAt))
         {
-            Debug.LogWarning("[EventSelection] Token rejected (401). Clearing session.");
-            LoginManager.ClearSession();
-            SceneManager.LoadScene(LOGIN_SCENE);
+            SetNotice($"Offline - showing events from {OfflineCache.FriendlyTime(savedAt)}.");
+            if (!ShowEvents(savedJson)) ShowNoEvents();
             yield break;
         }
 
-        if (request.responseCode == 200)
-        {
-            string json = request.downloadHandler.text;
-            string wrappedJson = "{\"events\":" + json + "}";
-            EventListWrapper wrapper = JsonUtility.FromJson<EventListWrapper>(wrappedJson);
+        // Never loaded online on this device for this participant.
+        SetNotice("Offline - connect to the internet to load your events.");
+        ShowNoEvents();
+    }
 
-            if (wrapper == null || wrapper.events == null || wrapper.events.Count == 0)
-            {
-                ShowNoEvents();
-                yield break;
-            }
+    // Builds one card per event in a getMyEvents answer.
+    // Returns false when there are no events to show.
+    bool ShowEvents(string json)
+    {
+        string wrappedJson = "{\"events\":" + json + "}";
+        EventListWrapper wrapper = JsonUtility.FromJson<EventListWrapper>(wrappedJson);
 
-            foreach (EventData ev in wrapper.events)
-            {
-                CreateEventCard(ev);
-            }
-        }
-        else
+        if (wrapper == null || wrapper.events == null || wrapper.events.Count == 0)
+            return false;
+
+        foreach (EventData ev in wrapper.events)
         {
-            Debug.LogError("FetchMyEvents failed: " + request.responseCode);
-            ShowNoEvents();
+            CreateEventCard(ev);
         }
+        return true;
     }
 
     void ShowNoEvents()
     {
         if (noEventsText != null) noEventsText.SetActive(true);
+    }
+
+    void SetNotice(string text)
+    {
+        if (offlineNoticeText == null) return;
+
+        bool show = !string.IsNullOrEmpty(text);
+        offlineNoticeText.gameObject.SetActive(show);
+        if (show) offlineNoticeText.text = text;
     }
 
     // ── Creates one Style A card from the prefab template ─────────────
