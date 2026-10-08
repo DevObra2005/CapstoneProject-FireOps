@@ -914,15 +914,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.28235295}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 876c5de1b5e5a6646ac6a93eb38109d1, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -4493,7 +4493,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000030517578}
+  m_AnchoredPosition: {x: 0, y: -0.000061035156}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1001 &414293184
@@ -4803,6 +4803,11 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 2087229377}
   m_SourcePrefab: {fileID: 100100000, guid: 89cc55f34c7f6884fa654897b75de8e0, type: 3}
+--- !u!4 &429002504 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8328179498603431967, guid: 89cc55f34c7f6884fa654897b75de8e0, type: 3}
+  m_PrefabInstance: {fileID: 429002503}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &433962450
 GameObject:
   m_ObjectHideFlags: 0
@@ -5954,15 +5959,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.28235295}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 5b535b64be22e48469503c15e5f1255d, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -7854,7 +7859,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 165406737}
         m_TargetAssemblyTypeName: SceneLoader, Assembly-CSharp
         m_MethodName: LoadMainMenu
         m_Mode: 1
@@ -16717,7 +16722,7 @@ MonoBehaviour:
   textRightNormal: 30
   textRightWithVideo: 200
   popupSound: {fileID: 8300000, guid: f1bf84b9782f5cb40838467e46cc5815, type: 3}
-  tapSound: {fileID: 8300000, guid: 5bb3ea4559ba4e343af5b0c58d218246, type: 3}
+  tapSound: {fileID: 8300000, guid: 00f92db176d45cb43bcaade0e5ffa0a3, type: 3}
   closeSound: {fileID: 8300000, guid: 1a8bf7156669f8d42a45c24c3370d293, type: 3}
   syncTypingToVoice: 1
   slidePanel: {fileID: 1693831600}
@@ -17017,7 +17022,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.000061035156, y: -0.000045776367}
+  m_AnchoredPosition: {x: -0.000061035156, y: -0.000061035156}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1326251801
@@ -19385,6 +19390,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 225074495}
     m_Modifications:
+    - target: {fileID: 590074027405492005, guid: 9236dc076876a4245afe0b6a03bccda2, type: 3}
+      propertyPath: wrongSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 0b7123af49cdaf04b836a7dcf1e0a07b, type: 3}
     - target: {fileID: 6255251144840207495, guid: 9236dc076876a4245afe0b6a03bccda2, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -21055,15 +21064,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.28235295}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 5b535b64be22e48469503c15e5f1255d, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -25233,7 +25242,7 @@ MonoBehaviour:
     hint: Tap WET to soak the towel in water. A wet towel smothers fire safely.
     voiceClip: {fileID: 0}
     wrongVoiceClip: {fileID: 0}
-    target: {fileID: 0}
+    target: {fileID: 429002504}
     waypoints: []
   - label: 3 Cover
     step: 3
@@ -25241,7 +25250,7 @@ MonoBehaviour:
     hint: Walk to the burning gas tank, then tap COVER to smother the flames.
     voiceClip: {fileID: 0}
     wrongVoiceClip: {fileID: 0}
-    target: {fileID: 0}
+    target: {fileID: 1884171295}
     waypoints: []
   - label: 4 Turn Off
     step: 4

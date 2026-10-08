@@ -11544,7 +11544,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 300211851}
         m_TargetAssemblyTypeName: SceneLoader, Assembly-CSharp
         m_MethodName: LoadMainMenu
         m_Mode: 1
@@ -35535,15 +35535,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.28235295}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 5b535b64be22e48469503c15e5f1255d, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -35923,7 +35923,7 @@ MonoBehaviour:
   textRightNormal: 30
   textRightWithVideo: 200
   popupSound: {fileID: 8300000, guid: f1bf84b9782f5cb40838467e46cc5815, type: 3}
-  tapSound: {fileID: 8300000, guid: 5bb3ea4559ba4e343af5b0c58d218246, type: 3}
+  tapSound: {fileID: 8300000, guid: 00f92db176d45cb43bcaade0e5ffa0a3, type: 3}
   closeSound: {fileID: 8300000, guid: 1a8bf7156669f8d42a45c24c3370d293, type: 3}
   syncTypingToVoice: 1
   slidePanel: {fileID: 1693831600}
@@ -36781,15 +36781,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.28235295}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 876c5de1b5e5a6646ac6a93eb38109d1, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -53822,15 +53822,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.28235295}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 5b535b64be22e48469503c15e5f1255d, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -62050,6 +62050,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1513303292}
     m_Modifications:
+    - target: {fileID: 590074027405492005, guid: 9236dc076876a4245afe0b6a03bccda2, type: 3}
+      propertyPath: wrongSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 0b7123af49cdaf04b836a7dcf1e0a07b, type: 3}
     - target: {fileID: 6255251144840207495, guid: 9236dc076876a4245afe0b6a03bccda2, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
